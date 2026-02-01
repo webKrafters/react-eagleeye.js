@@ -1,0 +1,51 @@
+.site-footing {
+    background-color: var( --blackie );
+    border: none;
+    border-top: 2px solid var( --yellow );
+    color: var( --gray );
+    padding: 0.5rem;
+    a { color: var( --gray ) }
+    > * { display: flex }
+    > .affiliate-columns {
+        flex-wrap: wrap;
+        gap: 2rem 5rem;
+        justify-content: space-between;
+        padding: 1rem 3rem;
+        > * {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-width: 12.5rem;
+            min-width: 6.25rem;
+        }
+    }
+    > .ip {
+        flex-wrap: wrap;
+        @media ( max-width: 575px ) {
+            justify-content: center
+        }
+        > :first-child { margin-right: 0.25rem }
+        > :last-child {
+            justify-content: end;
+            text-align: right;
+        }
+        .wk-logo {
+            height: 0.625rem;
+            vertical-align: baseline;
+            width: 4rem
+        }
+    }
+    .dkm-link {
+        align-items: center;
+        column-gap: 0.25rem;
+        display: flex;
+        flex-wrap: nowrap;
+        > a { cursor: pointer }
+    }
+    .dark-mode-settings {
+        .anticon {
+            &-moon { font-size: 0.75rem }
+            &-sun { font-size: 1rem }
+        }
+    }
+}

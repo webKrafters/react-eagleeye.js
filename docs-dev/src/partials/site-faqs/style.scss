@@ -1,0 +1,13 @@
+:root { --sftext: var( --charcoal ) }
+.dark { --sftext: var( --ash ) }
+.site-faqs {
+    margin-left: 1rem;
+    min-width: 10rem;
+    padding: 1rem;
+    > * {
+        color: var( --sftext );
+        display: block;
+        line-height: 1.5;
+        margin: 1rem auto;
+    }
+}

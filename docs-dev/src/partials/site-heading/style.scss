@@ -1,0 +1,63 @@
+:root { --shbg: var( --skye ) }
+.dark { --shbg: var( --midnight ) }
+
+.site-heading {
+    background: var( --shbg );
+    border-bottom: 1px solid;
+    border-color: var( --border-color );
+    column-gap: 0.5rem;
+    > * { flex: 1 1 auto }
+    &, & > * {
+        align-items: center;
+        display: flex;
+    }
+    > :last-child {
+        flex-wrap: nowrap;
+        gap: 1rem;
+        justify-content: flex-end;
+        overflow-x: hidden;
+        padding-right: 0.5rem;
+        text-align: right;
+        > .site-tags { margin-right: 5rem }
+    }
+    .sider-toggle-btn, .branding, .logo-link, .logo {
+        height: var( --top-height )
+    }
+    .sider-toggle-btn {
+        background: var( --charcoal );
+        border: none;
+        border-right: 2px solid var( --blue );
+        color: var( --white );
+        display: block;
+        flex: 0 0 2rem;
+        > * { font-size: 1rem }
+    }
+    .branding { width: 32rem }
+    .logo { width: 8rem }
+    .text {
+        align-items: center;
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: center;
+        width: 23rem;
+        @media ( max-width: 524px ) {
+            justify-content: flex-start;
+            padding-left: 1.5rem;
+        }
+        > :first-child {
+            font-size: 1.45rem;
+            font-weight: 800;
+            padding-right: 0.5rem;
+            > a { color: var( --yellow ) }
+        }
+        > :last-child {
+            border-left: 0.25rem solid var( --blue );
+            font-weight: 300;
+            padding-left: 0.5rem;
+            > a { color: var( --blue ) }
+            @media ( max-width: 524px ) {
+                display: none;
+            }
+        }
+    }
+}

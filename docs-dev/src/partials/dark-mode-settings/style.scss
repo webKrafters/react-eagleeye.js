@@ -1,0 +1,31 @@
+.dark-mode-settings {
+    align-items: center;
+    border: 1px solid transparent;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    flex: 0 0 auto;
+    height: 2.5rem;
+    justify-content: center;
+    outline: 0;
+    width: 2.5rem;
+    &, &:active, &:focus {
+        background: #ffffff0a;
+        border-color: #ffffff0a;
+    }
+    &:hover {
+        background: transparent;
+        border-color: transparent;
+    }
+    .anticon {
+        &-moon, &-sun { background: transparent }
+        &-moon {
+            color: var( --white );
+            font-size: 1.35rem;
+        }
+        &-sun {
+            color: #fb8;
+            font-size: 2rem;
+        }
+    }
+}

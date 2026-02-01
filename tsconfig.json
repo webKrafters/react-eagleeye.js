@@ -3,25 +3,35 @@
     // Tells TypeScript to read JS files, as
     // normally they are ignored as source files
     "allowJs": true,
+    "allowSyntheticDefaultImports": true,
     // Generate d.ts files
     "declaration": true,
     // go to js file when using IDE functions like
     // "Go to Definition" in VSCode
-    "declarationMap": true,
+    // "declarationMap": true,
     // This compiler run should
     // only output d.ts files
-    "emitDeclarationOnly": true,
-    "lib": [ "ES2020", "ES2021.WeakRef" ],
+    // "emitDeclarationOnly": true,
     // Types should go into this directory.
     // Removing this would place the .d.ts files
     // next to the .js files
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "jsx": "react",
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext",
     "outDir": "dist",
     "removeComments": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "target": "ES2020"
   },
   // Change the following to match your project
   "exclude": [
 	  "src/**/test",
+		"src/**/test-apps",
+		"src/test-artifacts",
+		"src/**/*.test.ts",
+		"src/**/*.test.tsx",
 		"src/**/*.test.js"
   ],
   "include": [ "src/**/*" ]

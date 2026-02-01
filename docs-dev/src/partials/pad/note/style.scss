@@ -1,0 +1,16 @@
+$color: #f74;
+
+.note-pad {
+    position: relative;
+    padding: 0 0 0 12px;
+    &::before {
+        content: '';
+        background: $color;
+        width: 4px;
+        position: absolute;
+        top: 6px;
+        left: 0;
+        height: calc(100% - 12px);
+    }
+    .title { color: $color }
+}

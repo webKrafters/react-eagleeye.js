@@ -7,4 +7,4 @@ dist
 node_modules
 npm-debug.log*
 report.*.json
-*.code-workspace
+docs-dev-copy

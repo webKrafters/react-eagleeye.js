@@ -1,0 +1,15 @@
+.list-item {
+    padding-left: 1.5rem;
+    position: relative;
+    &::before{
+        background: var( --color );
+        border: 2px solid var( --background-color-mild );
+        content: '';
+        height: 1rem;
+        left: 0;
+        margin-right: 1rem;
+        position: absolute;
+        top: 6px;
+        width: 0.5rem;
+    }
+}

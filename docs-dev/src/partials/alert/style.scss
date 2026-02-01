@@ -1,0 +1,14 @@
+:root { --al-color: #ddd }
+.dark { --al-color: #333 }
+
+.alert {
+    margin-top: 2rem;
+    > .content {
+        border: 1px solid var( --al-color );
+        border-left-width: 0.5rem;
+        border-right-width: 0.5rem;
+        border-radius: 1rem;
+        margin-top: 1rem;
+        padding: 1rem 1.5rem;
+    }
+}

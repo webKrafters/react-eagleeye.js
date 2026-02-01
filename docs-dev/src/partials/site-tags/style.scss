@@ -1,0 +1,5 @@
+.site-tags {
+    display: flex;
+    column-gap: 0.25rem;
+    > * { line-height: 1px }
+}

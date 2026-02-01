@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkeagleeye_dev=self.webpackChunkeagleeye_dev||[]).push([[1126],{88800:function(e){function n(e){e.languages.bnf={string:{pattern:/"[^\r\n"]*"|'[^\r\n']*'/},definition:{pattern:/<[^<>\r\n\t]+>(?=\s*::=)/,alias:["rule","keyword"],inside:{punctuation:/^<|>$/}},rule:{pattern:/<[^<>\r\n\t]+>/,inside:{punctuation:/^<|>$/}},operator:/::=|[|()[\]{}*+?]|\.{3}/},e.languages.rbnf=e.languages.bnf}e.exports=n,n.displayName="bnf",n.aliases=["rbnf"]}}]);
+//# sourceMappingURL=react-syntax-highlighter_languages_refractor_bnf-7403948371dc1a43ab19.js.map
