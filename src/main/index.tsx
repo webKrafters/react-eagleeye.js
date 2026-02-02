@@ -1,42 +1,21 @@
-interface ConnectProps<
-	T extends State = State,
-	S extends SelectorMap = SelectorMap
-> {
-	store : Store<T, S>
-}
-
-type OwnPropsOf<P extends {}> = Omit<P, 'store'>;
-
-export interface StreamAdapter<T extends State = State>{
-	<S extends SelectorMap>(selectorMap? : S) : <
-		P extends ConnectProps<T, S>
-	>(WrappedComponent: ElementType<P>) => FC<OwnPropsOf<P>>;
-	<S extends SelectorMap>(selectorMap? : S) : <
-		P extends ConnectProps<T, S>
-	>(WrappedComponent: NamedExoticComponent<P>) => FC<OwnPropsOf<P>>;
-}
-
 import type {
-	ElementType,
-	FC,
-	NamedExoticComponent,
-} from 'react';
-
-import type {
+	AutoImmutable,
 	Changes,
-	Data,
+	ConnectProps,
 	IStorage,
+	Prehooks,
 	ProviderProps,
-	Listener,
+	RawProviderProps,
 	SelectorMap,
 	State,
 	Store,
-	StoreRef,
-	RawProviderProps
-} from '@webkrafters/eagleeye';
+	Stream,
+	StreamAdapter
+} from '..';
 
 import React, {
 	createContext as _createContext,
+	type FC,
 	useCallback,
 	useEffect,
 	useEffectEvent,
@@ -44,18 +23,11 @@ import React, {
 	useState,
 } from 'react';
 
-import ObservableContext, {
-	type AutoImmutable,
-	type IStorage,
-	type Prehooks,
-	type State,
-	Storage,
-	type Stream
+import {
+	EagleEyeContext as BaseContext
 } from '@webkrafters/eagleeye';
 
-import * as constants from '../constants';
-
-export class ReactObservableContext<T extends State = State> extends ObservableContext<T> {
+export class EagleEyeContext<T extends State = State> extends BaseContext<T> {
 	
 	private _streamAdapter : StreamAdapter<T>;
 	private _stream : Stream<T>;
@@ -74,7 +46,7 @@ export class ReactObservableContext<T extends State = State> extends ObservableC
 		super( value, prehooks, storage );
 
 		// @debug
-		this._stream = selectorMap => {
+		this._stream = <S extends SelectorMap>( selectorMap? : S ) => {
 			const [ store ] = useState(() => super.stream( selectorMap ));
 			const [ data, setData ] = useState( () => store.data );
 			useEffectEvent(() => { store.onDataChange = () => setData( store.data ) });
@@ -204,10 +176,10 @@ export class ReactObservableContext<T extends State = State> extends ObservableC
 
 }
 
-export function createContext<T extends State = State>( props : ProviderProps<T> ) : ObservableContext<T>;
-export function createContext<T extends State = State>( props : RawProviderProps<T> ) : ObservableContext<T>;
-export function createContext<T extends State = State>( props ) : ObservableContext<T> {
-	return new ObservableContext<T>( props.value, props.prehooks, props.storage );
+export function createEagleEye<T extends State = State>( props? : RawProviderProps<T> ) : EagleEyeContext<T>;
+export function createEagleEye<T extends State = State>( props? : ProviderProps<T> ) : EagleEyeContext<T>; 
+export function createEagleEye<T extends State = State>( props = {} as ProviderProps<T> ) {
+	return new EagleEyeContext<T>( props.value, props.prehooks, props.storage );
 }
 
 
@@ -217,7 +189,7 @@ export function createContext<T extends State = State>( props ) : ObservableCont
 
 type TestState = { a : number };
 type TestSelectorMap = { anchor : 'a' };
-const obCtx = new ReactObservableContext<TestState>({ a: 22 });
+const obCtx = new EagleEyeContext<TestState>({ a: 22 });
 const connect = obCtx.streamAdapter({ anchor: 'a' });
 
 interface Props extends ConnectProps<
@@ -232,7 +204,3 @@ interface Props extends ConnectProps<
 const MyComp : FC<Props> = ( props ) => props.year;
 const ConnectedComp = connect( MyComp );
 () => ( <ConnectedComp make="toyota" model="camry" year={ 1996 } /> );
-
-// @debug [ENDS]
-
-/* ------------------------------------------------------- */
