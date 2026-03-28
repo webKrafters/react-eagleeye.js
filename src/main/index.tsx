@@ -1,206 +1,218 @@
+import type { ElementType, FC, ReactNode } from 'react';
+
 import type {
-	AutoImmutable,
-	Changes,
 	ConnectProps,
-	IStorage,
-	Prehooks,
-	ProviderProps,
-	RawProviderProps,
+	ExtractInjectedProps,
 	SelectorMap,
-	State,
-	Store,
-	Stream,
-	StreamAdapter
+	Store
 } from '..';
 
+import isEqual from 'lodash.isequal';
+import isPlainObject from 'lodash.isplainobject';
+import omit from 'lodash.omit';
+
 import React, {
+	Children,
+	cloneElement,
 	createContext as _createContext,
-	type FC,
-	useCallback,
+	memo,
 	useEffect,
-	useEffectEvent,
-	useMemo,
-	useState,
+	useRef,
+	useState
 } from 'react';
 
 import {
-	EagleEyeContext as BaseContext
-} from '@webkrafters/eagleeye';
+	AutoImmutable,
+	createEagleEye,
+	EagleEyeContext,
+	IStorage,
+	Prehooks,
+	State
+} from "@webkrafters/eagleeye";
 
-export class EagleEyeContext<T extends State = State> extends BaseContext<T> {
-	
-	private _streamAdapter : StreamAdapter<T>;
-	private _stream : Stream<T>;
-	
+export class ObservableContext<T extends State> {
+	private consumer : EagleEyeContext<T>;
+	constructor(
+		value? : T,
+		prehooks? : Prehooks<T>,
+		storage? : IStorage<T>
+	); 
 	constructor(
 		value? : AutoImmutable<T>,
 		prehooks? : Prehooks<T>,
 		storage? : IStorage<T>
 	);
-	constructor(
-		value? : T,
-		prehooks? : Prehooks<T>,
-		storage? : IStorage<T>
-	);
 	constructor( value, prehooks, storage ) {
-		super( value, prehooks, storage );
+		this.consumer = createEagleEye({ prehooks, storage, value });
+	}
 
-		// @debug
-		this._stream = <S extends SelectorMap>( selectorMap? : S ) => {
-			const [ store ] = useState(() => super.stream( selectorMap ));
-			const [ data, setData ] = useState( () => store.data );
-			useEffectEvent(() => { store.onDataChange = () => setData( store.data ) });
-			useMemo(() => { store.selectorMap = selectorMap }, [ selectorMap ]);
-			useEffect(() => { store.close() }, []);
-			const resetState = useCallback(( propertyPaths? : Array<string> ) => store.resetState( propertyPaths ), []);
-			const setState = useCallback(( changes : Changes<T> ) => store.setState( changes ), []);
-			return useMemo<Store<T, S>>(() => ({ data, resetState, setState }), [ data ]);
-		};
-		// this.useContext = <S extends SelectorMap>( selectorMap? : S ) => {
-		// 	let [ connection ] = React.useState(() => this.cache.connect());
-			
-		// 	const _renderKeys = useRenderKeyProvider( selectorMap );
+	get cache(){ return this.consumer.cache }
 
-		// 	const refineKeys = () => {
-		// 		const rKeys = _renderKeys.slice();
-		// 		if( fullStateSelectorIndex !== -1 ) {
-		// 			rKeys[ fullStateSelectorIndex ] = constants.GLOBAL_SELECTOR;
-		// 		}
-		// 		return rKeys;
-		// 	}
+	get closed(){ return this.consumer.closed }
 
-		// 	/* Reverses selectorMap i.e. {selectorKey: propertyPath} => {propertyPath: selectorKey} */
-		// 	const [ selectorMapInverse, fullStateSelectorIndex ] = useMemo(() => {
-		// 		const map = {} as {[propertyPath: string]: string};
-		// 		if( !_renderKeys.length ) {
-		// 			return [ map, _renderKeys.indexOf( constants.FULL_STATE_SELECTOR ) ];
-		// 		}
-		// 		for( const selectorKey in selectorMap ) {
-		// 			map[ selectorMap[ selectorKey as string ] ] = selectorKey;
-		// 		}
-		// 		return [ map, _renderKeys.indexOf( constants.FULL_STATE_SELECTOR ) ];
-		// 	}, [ _renderKeys ]);
+	get connect() { return this._connect }
 
-		// 	const [ data, setData ] = React.useState(() => {
-		// 		const data = {} as Data<S, T>;
-		// 		if( !_renderKeys.length ) { return data }
-		// 		const state = connection.get( ...refineKeys() as string[] );
-		// 		for( const propertyPath of _renderKeys ) {
-		// 			data[ selectorMapInverse[ propertyPath ] ] = state[
-		// 				propertyPath === constants.FULL_STATE_SELECTOR
-		// 					? constants.GLOBAL_SELECTOR
-		// 					: propertyPath
-		// 			];
-		// 		}
-		// 		return data;
-		// 	});
+	get prehooks() { return this.consumer.prehooks }
 
-		// 	const dataSourceListener : Listener = (
-		// 		changes, changePathsTokens, netChanges, mayHaveChangesAt
-		// 	) => {
-		// 		for( let _Len = _renderKeys.length, _ = 0; _ < _Len; _++ ) {
-		// 			if( _renderKeys[ _ ] !== constants.FULL_STATE_SELECTOR && !mayHaveChangesAt(
-		// 				stringToDotPath( _renderKeys[ _ ] as string ).split( '.' )
-		// 			) ) { continue }
-		// 			return updateData();
-		// 		}
-		// 	};
+	get storage() { return this.consumer.storage }
 
-		// 	const updateData = () => {
-		// 		let hasChanges = false;
-		// 		const state = connection.get( ...refineKeys() as Array<string> );
-		// 		for( const propertyPath of _renderKeys ) {
-		// 			const selectorKey = selectorMapInverse[ propertyPath ];
-		// 			if( propertyPath === constants.FULL_STATE_SELECTOR ) {
-		// 				if( data[ selectorKey ] === state[ constants.GLOBAL_SELECTOR ] ) { continue }
-		// 				data[ selectorKey ] = state[ constants.GLOBAL_SELECTOR ];
-		// 				hasChanges = true;
-		// 				continue;
-		// 			}
-		// 			if( data[ selectorKey ] === state[ propertyPath ] ) { continue }
-		// 			data[ selectorKey ] = state[ propertyPath ];
-		// 			hasChanges = true;
-		// 		}
-		// 		hasChanges && setData({ ...data });
-		// 	};
+	get store() { return this.consumer.store }
 
-		// 	const [ resetState, setState ] = useMemo(() => [
-		// 		( propertyPaths = _renderKeys as Array<string> ) => this.resetState( connection, propertyPaths ),
-		// 		changes => this.setState( connection, changes ),
-		// 	], [ connection ]);
-
-		// 	React.useEffect(() => { // sync data states with new renderKeys
-		// 		if( this.cache.closed ) { return }
-		// 		connection = this.cache.connect();
-		// 		if( !_renderKeys.length ) {
-		// 			const _default = {} as typeof data;
-		// 			!isEqual( _default, data ) && setData( _default );
-		// 			return;
-		// 		}
-		// 		for( const selectorKey in data ) {
-		// 			if( !( selectorMap[ selectorKey as string ] in selectorMapInverse ) ) {
-		// 				delete data[ selectorKey ];
-		// 			}
-		// 		}
-		// 		const unsubscribe = this.subscribe( dataSourceListener );
-		// 		updateData();
-		// 		return () => {
-		// 			if( this.cache.closed ) { return }
-		// 			unsubscribe();
-		// 			connection.disconnect();
-		// 		};
-		// 	}, [ _renderKeys ]);
-
-		// 	return useMemo<Store<T, S>>(
-		// 		() => ({ data, resetState, setState }),
-		// 		[ data ]
-		// 	);
-		// };
-		this._streamAdapter = selectorMap => {
-			const useContext = this._stream;
-			const connect = WrappedComponent => {
-				const ConnectedComponent = ownProps => {
-					const store = useContext( selectorMap );
-					return ( <WrappedComponent store={ store } { ...ownProps } /> );
-				};
-				ConnectedComponent.displayName = 'ObservableContext.Connected';
-				return ConnectedComponent;
-			}
-			return connect;
+	/** 
+	 * Actively monitors the store and triggers component re-render if any of the watched keys in the state objects changes
+	 * 
+	 * @param context - Refers to the PublicObservableContext<T> type of the ObservableContext<T>
+	 * @param [selectorMap = {}] - Key:value pairs where `key` => arbitrary key given to a Store.data property holding a state slice and `value` => property path to a state slice used by this component: see examples below. May add a mapping for a certain arbitrary key='state' and value='@@STATE' to indicate a desire to obtain the entire state object and assign to a `state` property of Store.data. A change in any of the referenced properties results in this component render. When using '@@STATE', note that any change within the state object will result in this component render.
+	 * @see {ObservableContext<STATE>}
+	 * 
+	 * @example
+	 * a valid property path follows the `lodash` object property path convention.
+	 * for a state = { a: 1, b: 2, c: 3, d: { e: 5, f: [6, { x: 7, y: 8, z: 9 } ] } }
+	 * Any of the following is an applicable selector map.
+	 * ['d', 'a'] => {
+	 * 		0: { e: 5, f: [6, { x: 7, y: 8, z: 9 } ] },
+	 * 		1: 1
+	 * }
+	 * {myData: 'd', count: 'a'} => {
+	 * 		myData: { e: 5, f: [6, { x: 7, y: 8, z: 9 } ] },
+	 * 		count: 1
+	 * }
+	 * {count: 'a'} => {count: 1} // same applies to {count: 'b'} = {count: 2}; {count: 'c'} = {count: 3}
+	 * {myData: 'd'} => {mydata: { e: 5, f: [6, { x: 7, y: 8, z: 9 } ] }}
+	 * {xyz: 'd.e'} => {xyz: 5}
+	 * {def: 'd.e.f'} => {def: [6, { x: 7, y: 8, z: 9 } ]}
+	 * {f1: 'd.e.f[0]'} or {f1: 'd.e.f.0'} => {f1: 6}
+	 * {secondFElement: 'd.e.f[1]'} or {secondFElement: 'd.e.f.1'} => {secondFElement: { x: 7, y: 8, z: 9 }}
+	 * {myX: 'd.e.f[1].x'} or {myX: 'd.e.f.1.x'} => {myX: 7} // same applies to {myY: 'd.e.f[1].y'} = {myY: 8}; {myZ: 'd.e.f[1].z'} = {myZ: 9}
+	 * {myData: '@@STATE'} => {myData: state}
+	 */
+	get useStream() {
+		const stream = this.consumer.stream;
+		return <S extends SelectorMap>( selectorMap? : S ) => {
+			const [ channel ] = useState(() => stream( selectorMap ));
+			const [ store, setStore ] = useState(() => ({
+				data: channel.data,
+				resetState: channel.resetState.bind( channel ),
+				setState: channel.setState.bind( channel )
+			} as unknown as Store<T, S> ));
+			useEffect(() => {
+				channel.selectorMap = selectorMap;
+			}, [ selectorMap ]);
+			useEffect(() => {
+				channel.addListener(
+					'data-changed',
+					() => setStore({
+						...store, data: channel.data
+					} as unknown as Store<T, S> )
+				);
+				return () => channel.endStream();
+			}, []);
+			return store;
 		};
 	}
+
+	set prehooks( prehooks : Prehooks<T> ) {
+		this.consumer.prehooks = prehooks;
+	}
+
+	set storage( storage : IStorage<T> ) {
+		this.consumer.storage = storage;
+	}
+
+	/**
+	 * Provides an HOC function for connecting its WrappedComponent argument to the context store.
+	 *
+	 * The HOC function automatically memoizes any un-memoized WrappedComponent argument.
+	 *
+	 * @param context - Refers to the PublicObservableContext<T> type of the ObservableContext<T>
+	 * @param [selectorMap] - Key:value pairs where `key` => arbitrary key given to a Store.data property holding a state slice and `value` => property path to a state slice used by this component: see examples below. May add a mapping for a certain arbitrary key='state' and value='@@STATE' to indicate a desire to obtain the entire state object and assign to a `state` property of Store.data. A change in any of the referenced properties results in this component render. When using '@@STATE', note that any change within the state object will result in this component render.
+	 * @see {useStream} for selectorMap sample
+	 */
+	private _connect = <S extends SelectorMap>( selectorMap? : S ) => {
+		const ctx = this;
+		function connector<P extends ExtractInjectedProps<T, S>>(
+			WrappedComponent : ElementType<ConnectProps<P, T, S>>
+		) : FC<P>;
+		function connector<P extends ExtractInjectedProps<T, S>>(
+			WrappedComponent
+		) : FC<P> {
+			const useStream = ctx.useStream;
+			const Wrapped = (
+				!( isPlainObject( WrappedComponent ) && 'compare' in WrappedComponent as {} )
+					? memo( WrappedComponent )
+					: WrappedComponent
+			);
+			const ConnectedComponent : FC = ownProps => {
+				const store = useStream( selectorMap );
+				return memoizeImmediateChildTree(
+					<Wrapped { ...store } { ...ownProps } />
+				) as JSX.Element;
+			};
+			ConnectedComponent.displayName = 'ObservableContext.Connected';
+			return ConnectedComponent;;
+		}
+		return connector;
+	}
 	
-	public get streamAdapter() { return this._streamAdapter }
-
-	public get stream() { return this._stream }
-
+	dispose(){ this.consumer.dispose() }
 }
 
-export function createEagleEye<T extends State = State>( props? : RawProviderProps<T> ) : EagleEyeContext<T>;
-export function createEagleEye<T extends State = State>( props? : ProviderProps<T> ) : EagleEyeContext<T>; 
-export function createEagleEye<T extends State = State>( props = {} as ProviderProps<T> ) {
-	return new EagleEyeContext<T>( props.value, props.prehooks, props.storage );
+/* istanbul ignore next */
+const ChildMemo : FC<{ child: ReactNode }> = (() => {
+
+	/* istanbul ignore next */
+	const useNodeMemo = ( node : ReactNode ) : ReactNode => {
+		const nodeRef = useRef( node );
+		if( !isEqual(
+			omit( nodeRef.current, '_owner' ),
+			omit( node, '_owner' )
+		) ) { nodeRef.current = node }
+		return nodeRef.current;
+	};
+
+	const ChildMemo = memo<{ child: ReactNode }>(({ child }) => ( <>{ child }</> ));
+	ChildMemo.displayName = 'ObservableContext.Provider.Internal.Guardian.ChildMemo';
+
+	const Guardian : FC<{ child: ReactNode }> = ({ child }) => (
+		<ChildMemo child={ useNodeMemo( child ) } />
+	);
+	Guardian.displayName = 'ObservableContext.Provider.Internal.Guardian';
+
+	return Guardian;
+})();
+
+/* istanbul ignore next */
+function memoizeImmediateChildTree( children : ReactNode ) : ReactNode {
+	return Children.map( children, _child => {
+		let child = _child as JSX.Element;
+		if( !( child?.type ) || ( // skip memoized or non element(s)
+			typeof child.type === 'object' &&
+			child.type.$$typeof?.toString() === 'Symbol(react.memo)'
+		) ) {
+			return child;
+		}
+		/* istanbul ignore if */
+		if( child.props?.children ) {
+			child = cloneElement(
+				child,
+				omit( child.props, 'children' ),
+				memoizeImmediateChildTree( child.props.children )
+			);
+		}
+		return ( <ChildMemo child={ child } /> );
+	} );
 }
 
-
-/* ------------------------------------------------------- */
-
-// @debug [BEGINS]
-
-type TestState = { a : number };
-type TestSelectorMap = { anchor : 'a' };
-const obCtx = new EagleEyeContext<TestState>({ a: 22 });
-const connect = obCtx.streamAdapter({ anchor: 'a' });
-
-interface Props extends ConnectProps<
-	TestState,
-	TestSelectorMap
-> {
-	make : string;
-	model : string;
-	store : Store<TestState, TestSelectorMap>;
-	year : number;
+export function createContext<T extends State>(
+	value? : T,
+	prehooks? : Prehooks<T>,
+	storage? : IStorage<T>
+) : ObservableContext<T>; 
+export function createContext<T extends State>(
+	value? : AutoImmutable<T>,
+	prehooks? : Prehooks<T>,
+	storage? : IStorage<T>
+) : ObservableContext<T>;
+export function createContext<T extends State>( value, prehooks, storage ) {
+	return new ObservableContext<T>( value, prehooks, storage );
 }
-const MyComp : FC<Props> = ( props ) => props.year;
-const ConnectedComp = connect( MyComp );
-() => ( <ConnectedComp make="toyota" model="camry" year={ 1996 } /> );

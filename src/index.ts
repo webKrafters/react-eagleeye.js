@@ -1,34 +1,8 @@
 import type {
-    SelectorMap,
-    State,
-    Store
-} from '@webkrafters/eagleeye';
-
-import {
-    ElementType,
-    FC,
-    NamedExoticComponent
+    ComponentType,
+    NamedExoticComponent,
+    RefAttributes
 } from 'react';
-
-import { createEagleEye } from './main';
-
-export interface ConnectProps<
-	T extends State = State,
-	S extends SelectorMap = SelectorMap
->{
-	store : Store<T, S>;
-}
-
-export type OwnPropsOf<P extends {}> = Omit<P, 'store'>;
-
-export interface StreamAdapter<T extends State = State>{
-	<S extends SelectorMap>(selectorMap? : S) : <
-		P extends ConnectProps<T, S>
-	>(WrappedComponent: ElementType<P>) => FC<OwnPropsOf<P>>;
-	<S extends SelectorMap>(selectorMap? : S) : <
-		P extends ConnectProps<T, S>
-	>(WrappedComponent: NamedExoticComponent<P>) => FC<OwnPropsOf<P>>;
-}
 
 export type {
     BaseType,
@@ -49,23 +23,29 @@ export type {
 export type {
     ArraySelector,
     Changes,
-    ContextInfra,
+    Channel,
     Data,
     FullStateSelector,
     IStorage,
     IStore,
     Listener,
-    LiveStore,
     ObjectSelector,
     Prehooks,
     ProviderProps,
-    RawProviderProps,
     SelectorMap,
     State,
     Store,
+    StoreInternal,
     StoreRef,
+    Stream,
     Text,
     Unsubscribe
+} from '@webkrafters/eagleeye';
+
+import {
+    SelectorMap,
+    State,
+    Store
 } from '@webkrafters/eagleeye';
 
 export {
@@ -81,9 +61,29 @@ export {
     Tag,
 } from '@webkrafters/eagleeye';
 
-export {
-    createEagleEye,
-    EagleEyeContext,
-} from './main';
+export type ConnectProps<
+    OWNPROPS extends OwnProps = IProps,
+    STATE extends State = State,
+    SELECTOR_MAP extends SelectorMap = SelectorMap
+> = { [K in keyof Store<STATE, SELECTOR_MAP>]: Store<STATE, SELECTOR_MAP>[K] }
+    & Omit<OWNPROPS, "ref">
+    & RefAttributes<OWNPROPS["ref"]>;
 
-export default createEagleEye;
+export type PropsExtract<C, STATE extends State, SELECTOR_MAP extends SelectorMap> =
+	C extends ComponentType<ConnectProps<infer U, STATE, SELECTOR_MAP>>
+		? U extends OwnProps ? U : IProps
+		: C extends NamedExoticComponent<ConnectProps<infer U, STATE, SELECTOR_MAP>>
+			? U extends OwnProps ? U : IProps
+			: IProps;
+
+export type ExtractInjectedProps<
+    STATE extends State = State,
+    SELECTOR_MAP extends SelectorMap = SelectorMap,
+    ALL_PROPS extends OwnProps = OwnProps
+> = Omit<ALL_PROPS, keyof Store<STATE>|keyof SELECTOR_MAP>
+
+export interface IProps {}
+
+export type OwnProps = IProps & Record<any, any>;
+
+export { createContext as createEagleEye } from './main';
