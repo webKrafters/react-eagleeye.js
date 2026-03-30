@@ -1,10 +1,9 @@
-import type { FC } from 'react';
+import type { FC, KeyboardEventHandler } from 'react';
 
 import type { Prehooks } from '../..';
 
 import React, {
 	memo,
-	useCallback,
 	useEffect,
 	useState
 } from 'react';
@@ -109,11 +108,11 @@ export function createPureClient(
 		
 		useEffect(() => ObservableContext.store.setState({ type }), [ type ]);
 		
-		const overridePricing = useCallback( e => {
+		const overridePricing = ( e => {
 			ObservableContext.store.setState({
-				price: Number( e.target.value )
+				price: Number(( e.target as HTMLInputElement ).value )
 			})
-		}, [] );
+		} ) as KeyboardEventHandler<HTMLInputElement>;
 		return (
 			<div>
 				<div style={{ marginBottom: 10 }}>
@@ -142,8 +141,7 @@ export function createPureClient(
 
 		const [ productType, setProductType ] = useState( 'Calculator' );
 
-		const updateType = useCallback( e => setProductType( e.target.value ), [] );
-
+		const updateType = ( e => setProductType(( e.target as HTMLInputElement ).value ) ) as  KeyboardEventHandler<HTMLInputElement>;
 		return (
 			<div className="App">
 				<h1>Demo</h1>

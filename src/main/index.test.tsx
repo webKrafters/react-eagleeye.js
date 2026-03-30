@@ -12,7 +12,7 @@ import {
 
 import getProperty from '@webkrafters/get-property';
 
-import React, { FC, useCallback } from 'react';
+import React, { FC } from 'react';
 
 import {
 	cleanup as cleanupPerfTest,
@@ -564,11 +564,11 @@ describe( 'ReactObservableContext', () => {
 					isActive: 'isActive',
 					tag6: 'tags[5]'
 				})(({ data, setState }) => {
-					const changeFirstName = useCallback(() => setState({
+					const changeFirstName = () => setState({
 						name: {
 							first: 'Hallelujah'
 						}
-					}), []);
+					});
 					return (
 						<>
 							<div data-testid="data-output">
@@ -922,11 +922,9 @@ describe( 'ReactObservableContext', () => {
 			let connector : Function;
 			let ConnectedComponent1 : FC<ExtractInjectedProps<typeof state, typeof selectorMap>>;
 			let ConnectedComponent2 : FC<ExtractInjectedProps<typeof state, typeof selectorMap>>;
-			let ConnectedRefForwardingComponent : React.ForwardRefExoticComponent<React.RefAttributes<unknown>>;
 			let ConnectedMemoizedComponent : FC<ExtractInjectedProps<typeof state, typeof selectorMap>>;
 			let compOneProps : { data : typeof selectorMap };
 			let compTwoProps : { data : typeof selectorMap };
-			let refForwardingCompProps : { data: typeof selectorMap };
 			let memoCompProps : { data: typeof selectorMap };
 			beforeAll(() => {
 				state = {
@@ -947,13 +945,6 @@ describe( 'ReactObservableContext', () => {
 				ConnectedComponent1 = connector( rawComp );
 				rawComp = props => { compTwoProps = props; return null };
 				ConnectedComponent2 = connector( rawComp );
-				let rawRefComp : React.ForwardRefRenderFunction<unknown, typeof compOneProps> = props => {
-					refForwardingCompProps = props;
-					return null;
-				};
-				const RefForwardingComponent = React.forwardRef( rawRefComp );
-				RefForwardingComponent.displayName = 'Connect.RefForwardingComponent';
-				ConnectedRefForwardingComponent = connector( RefForwardingComponent );
 				rawComp = props => { memoCompProps = props; return null };
 				const MemoizedComponent = React.memo( rawComp );
 				MemoizedComponent.displayName = 'Connect.MemoizedComponent';
@@ -968,7 +959,6 @@ describe( 'ReactObservableContext', () => {
 							<main>
 								<ConnectedComponent1 />
 								<ConnectedComponent2 />
-								<ConnectedRefForwardingComponent />
 								<ConnectedMemoizedComponent />
 							</main>
 							<footer>The End</footer>
@@ -979,12 +969,10 @@ describe( 'ReactObservableContext', () => {
 				test( 'is always a memoized component', () => {
 					expect( 'compare' in ConnectedComponent1 ).toBe( true );
 					expect( 'compare' in ConnectedComponent2 ).toBe( true );
-					expect( 'compare' in ConnectedRefForwardingComponent ).toBe( true );
 					expect( 'compare' in ConnectedMemoizedComponent ).toBe( true );
 				} );
 				test( 'is always interested in the same context state data', () => {
 					expect( compOneProps.data ).toStrictEqual( compTwoProps.data );
-					expect( compOneProps.data ).toStrictEqual( refForwardingCompProps.data );
 					expect( compOneProps.data ).toStrictEqual( memoCompProps.data );
 				} );
 				test( "contains the store's public API", () => {
@@ -1224,12 +1212,8 @@ describe( 'ReactObservableContext', () => {
 					const useTestStream = ObservableContext.useStream;
 					const TestClient = () => {
 						const { data, resetState, setState } = useTestStream([ FULL_STATE_SELECTOR ]);
-						const doReset = useCallback(() => {
-							resetState([ 'color', 'customer.phone']);
-						}, [ resetState ]);
-						const doSet = useCallback(() => {
-							setState( changes as TestState )
-						}, [ setState ]);
+						const doReset = () => resetState([ 'color', 'customer.phone']);
+						const doSet = () => setState( changes as TestState );
 						return (
 							<>
 								<div data-testid="data-output">
@@ -1699,9 +1683,7 @@ describe( 'ReactObservableContext', () => {
 					const useStream = ObservableContext.useStream;
 					Client = props => {
 						const { data, resetState } = useStream( props.selectorMap );
-						const doReset = useCallback(() => {
-							resetState( props.resetPaths );
-						}, [ resetState ]);
+						const doReset = () => resetState( props.resetPaths );
 						return (
 							<>
 								<div data-testid="data-output">

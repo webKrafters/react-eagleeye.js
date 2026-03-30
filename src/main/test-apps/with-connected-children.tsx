@@ -1,5 +1,6 @@
 import type {
 	FC,
+	KeyboardEventHandler,
 	ReactElement,
 	ReactNode
 } from 'react';
@@ -9,7 +10,6 @@ import type { Prehooks, Store } from '../..';
 import { TestState } from './normal';
 
 import React, {
-	useCallback,
 	useEffect,
 	useRef,
 	useState
@@ -42,7 +42,7 @@ export function createConnectedClient(
 
 	const Reset : FC<Store<Partial<TestState>>> = ({ resetState }) => {
 		useEffect(() => console.log( 'Reset component rendered.....' ));
-		const reset = useCallback(() => resetState(), []);
+		const reset = () => resetState();
 		return ( <button onClick={ reset }>reset context</button> );
 	};
 	Reset.displayName = 'Reset';
@@ -119,28 +119,28 @@ export function createConnectedClient(
 		const colorInputRef = useRef<HTMLInputElement>( null );
 		const typeInputRef = useRef<HTMLInputElement>( null );
 
-		const updateColor = useCallback(() => setState({
+		const updateColor = () => setState({
 			color: colorInputRef.current?.value
-		}), []);
-		const updateName = useCallback(() => setState({
+		});
+		const updateName = () => setState({
 			customer: {
 				name: {
 					first: fNameInputRef.current?.value,
 					last: lNameInputRef.current?.value
 				}
 			}
-		}), []);
-		const updatePhone = useCallback(() => {
+		});
+		const updatePhone = () => {
 			const phone = phoneInputRef.current!.value;
 			if( phone?.length && !/[0-9]{10}/.test( phone ) ) { return }
 			setState({ customer: { phone } });
-		}, []);
-		const updatePrice = useCallback(() => setState({
+		};
+		const updatePrice = () => setState({
 			price: Number( priceInputRef.current?.value )
-		}), []);
-		const updateType = useCallback(() => setState({
+		});
+		const updateType = () => setState({
 			type: typeInputRef.current?.value
-		}), []);
+		});
 
 		useEffect(() => console.log( 'Editor component rendered.....' ));
 
@@ -229,9 +229,9 @@ export function createConnectedClient(
 			
 		useEffect(() => setState({ type }), [ type ]);
 
-		const overridePricing = useCallback( e => setState({
-				price: Number( e.target.value )
-		}), [] );
+		const overridePricing = ( e => setState({
+				price: Number(( e.target as HTMLInputElement ).value )
+		}) ) as KeyboardEventHandler<HTMLInputElement>;
 
 		return (
 			<div>
@@ -261,7 +261,7 @@ export function createConnectedClient(
 
 		const [ productType, setProductType ] = useState( 'Calculator' );
 
-		const updateType = useCallback( e => setProductType( e.target.value ), [] );
+		const updateType = ( e => setProductType(( e.target as HTMLInputElement ).value ) ) as KeyboardEventHandler<HTMLInputElement>;
 
 		return (
 			<div className="App">

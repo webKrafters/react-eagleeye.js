@@ -1,5 +1,5 @@
 import React, {
-	useCallback,
+	KeyboardEventHandler,
 	useEffect,
 	useRef,
 	useState
@@ -58,7 +58,7 @@ export function createNormalClient(
 	const Reset : React.FC = () => {
 		const { resetState } = useStream();
 		useEffect(() => console.log( 'Reset component rendered.....' ));
-		const reset = useCallback(() => resetState([ FULL_STATE_SELECTOR ]), [ resetState ]);
+		const reset = () => resetState([ FULL_STATE_SELECTOR ]);
 		return ( <button onClick={ reset }>reset context</button> );
 	};
 	Reset.displayName = 'Reset';
@@ -138,28 +138,28 @@ export function createNormalClient(
 		const priceInputRef = useRef<HTMLInputElement>( null );
 		const colorInputRef = useRef<HTMLInputElement>( null );
 		const typeInputRef = useRef<HTMLInputElement>( null );
-		const updateColor = useCallback(() => setState({
+		const updateColor = () => setState({
 			color: colorInputRef.current!.value
-		}), []);
-		const updateName = useCallback(() => setState({
+		});
+		const updateName = () => setState({
 			customer: {
 				name: {
 					first: fNameInputRef.current!.value,
 					last: lNameInputRef.current!.value
 				}
 			}
-		}), []);
-		const updatePhone = useCallback(() => {
+		});
+		const updatePhone = () => {
 			const phone = phoneInputRef.current!.value;
 			if( phone.length && !/[0-9]{10}/.test( phone ) ) { return }
 			setState({ customer: { phone } });
-		}, []);
-		const updatePrice = useCallback(() => setState({
+		};
+		const updatePrice = () => setState({
 			price: Number( priceInputRef.current!.value )
-		} ), []);
-		const updateType = useCallback(() => setState({
+		});
+		const updateType = () => setState({
 			type: typeInputRef.current!.value
-		}), []);
+		});
 		useEffect(() => console.log( 'Editor component rendered.....' ));
 		return (
 			<fieldset style={{ margin: '10px 0' }}>
@@ -235,9 +235,9 @@ export function createNormalClient(
 		const { setState } = useStream();
 		useEffect(() => { ObservableContext.prehooks = prehooks! }, [ prehooks ]);
 		useEffect(() => setState({ type }), [ type ]);
-		const overridePricing = useCallback( e => setState({
-			price: Number( e.target.value )
-		}), []);
+		const overridePricing = ( e => setState({
+			price: Number(( e.target as HTMLInputElement ).value )
+		}) ) as KeyboardEventHandler<HTMLInputElement>;
 		return (
 			<div>
 				<div style={{ marginBottom: 10 }}>
@@ -262,7 +262,7 @@ export function createNormalClient(
 
 	const App : React.FC = () => {
 		const [ productType, setProductType ] = useState( 'Calculator' );
-		const updateType = useCallback( e => setProductType( e.target.value ), [] );
+		const updateType = ( e => setProductType(( e.target as HTMLInputElement ).value ) ) as KeyboardEventHandler<HTMLInputElement>;
 		return (
 			<div className="App">
 				<h1>Demo</h1>

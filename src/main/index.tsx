@@ -132,24 +132,24 @@ export class ObservableContext<T extends State> {
 		const ctx = this;
 		function connector<P extends ExtractInjectedProps<T, S>>(
 			WrappedComponent : ElementType<ConnectProps<P, T, S>>
-		) : FC<P>;
+		) : React.NamedExoticComponent<P>;
 		function connector<P extends ExtractInjectedProps<T, S>>(
 			WrappedComponent
-		) : FC<P> {
+		) : React.NamedExoticComponent<P> {
 			const useStream = ctx.useStream;
 			const Wrapped = (
 				!( isPlainObject( WrappedComponent ) && 'compare' in WrappedComponent as {} )
 					? memo( WrappedComponent )
 					: WrappedComponent
 			);
-			const ConnectedComponent : FC = ownProps => {
+			const ConnectedComponent = memo( ownProps => {
 				const store = useStream( selectorMap );
 				return memoizeImmediateChildTree(
 					<Wrapped { ...store } { ...ownProps } />
 				) as JSX.Element;
-			};
+			} );
 			ConnectedComponent.displayName = 'ObservableContext.Connected';
-			return ConnectedComponent;;
+			return ConnectedComponent;
 		}
 		return connector;
 	}
