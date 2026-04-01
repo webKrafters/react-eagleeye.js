@@ -1,7 +1,6 @@
 import type {
     ComponentType,
-    NamedExoticComponent,
-    RefAttributes
+    NamedExoticComponent
 } from 'react';
 
 export type {
@@ -61,26 +60,23 @@ export {
     Tag,
 } from '@webkrafters/eagleeye';
 
+type InjectedProps<
+    STATE extends State = State,
+    SELECTOR_MAP extends SelectorMap = SelectorMap
+> = { [K in keyof Store<STATE, SELECTOR_MAP>]: Store<STATE, SELECTOR_MAP>[K] };
+
 export type ConnectProps<
     OWNPROPS extends OwnProps = IProps,
     STATE extends State = State,
     SELECTOR_MAP extends SelectorMap = SelectorMap
-> = { [K in keyof Store<STATE, SELECTOR_MAP>]: Store<STATE, SELECTOR_MAP>[K] }
-    & Omit<OWNPROPS, "ref">
-    & RefAttributes<OWNPROPS["ref"]>;
-
-export type PropsExtract<C, STATE extends State, SELECTOR_MAP extends SelectorMap> =
-	C extends ComponentType<ConnectProps<infer U, STATE, SELECTOR_MAP>>
-		? U extends OwnProps ? U : IProps
-		: C extends NamedExoticComponent<ConnectProps<infer U, STATE, SELECTOR_MAP>>
-			? U extends OwnProps ? U : IProps
-			: IProps;
+> = InjectedProps<STATE, SELECTOR_MAP>
+    & Omit<OWNPROPS, keyof InjectedProps<STATE, SELECTOR_MAP>>;
 
 export type ExtractInjectedProps<
     STATE extends State = State,
     SELECTOR_MAP extends SelectorMap = SelectorMap,
     ALL_PROPS extends OwnProps = OwnProps
-> = Omit<ALL_PROPS, keyof Store<STATE>|keyof SELECTOR_MAP>
+> = Omit<ALL_PROPS, keyof InjectedProps<STATE, SELECTOR_MAP>>
 
 export interface IProps {}
 
