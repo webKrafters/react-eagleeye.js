@@ -26,7 +26,7 @@
     <td VALIGN="middle" ALIGN="center" FONT-WEIGHT="BOLD" COLOR="#333" HEIGHT="250px" width="1250px">
 		COMPATIBLE WITH REACT VERSIONS 19.2.0 AND BEYOND.<br />
 		FOR EARLIER VERSIONS OF REACT 16 TO 19, PLEASE USE THE<br />
-		<a href="https://www.npmjs.com/package/@webkrafters/react-eagleeye">React Observable Context.</a>
+		<a href="https://www.npmjs.com/package/@webkrafters/react-eagleeye">React Observable Context</a>.
 	</td>
 </table>
 <ul>
