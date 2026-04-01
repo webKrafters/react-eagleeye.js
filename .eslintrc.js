@@ -5,7 +5,10 @@ module.exports = {
 		'jest/globals': true,
 		node: true
 	},
-	extends: [ 'standard' ],
+	extends: [
+		'plugin:react/recommended',
+		'standard'
+	],
 	parserOptions: {
 		ecmaFeatures: {
 			jsx: true
