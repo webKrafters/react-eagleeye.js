@@ -26,7 +26,7 @@
     <td VALIGN="middle" ALIGN="center" FONT-WEIGHT="BOLD" COLOR="#333" HEIGHT="250px" width="1250px">
 		COMPATIBLE WITH REACT VERSIONS 19.2.0 AND BEYOND.<br />
 		FOR EARLIER VERSIONS OF REACT [v16.8.x TO v18.x.x], PLEASE USE THE<br />
-		<a href="https://www.npmjs.com/package/@webkrafters/react-eagleeye">React Observable Context</a>.
+		<a href="https://www.npmjs.com/package/@webkrafters/react-eagleeye">React Observable Context</a>
 	</td>
 </table>
 <ul>
@@ -37,9 +37,10 @@
 	<li> Recognizes <b>negative array indexing</b>. Please see <a href="https://react-eagleeye.js.org/concepts/property-path">Property Path</a> and <code>store.setState</code> <a href="https://react-eagleeye.js.org/concepts/store/setstate#indexing">Indexing</a>.</li>
 	<li> Only re-renders subscribing components (<a href="https://react-eagleeye.js.org/concepts/client">clients</a>) on context state changes.</li>
 	<li> Subscribing component decides which context state properties' changes to trigger its update.</li>
+	<li>OOB Support for framework-agnostic state sharing among applications. Simply create an <a href="https://auto-immutable.js.org/intro/">Auto Immutable</a> instance to pass around as the <code>value</code> argument for this or any <a href="https://eagleeye.js.org">Eagle Eye</a> based state manager instances.</li>
 </ul>
 
-**Name:** React-Eagle-Eye
+**Name:** React Eagle Eye.
 
 **Usage:** Please see <b><a href="https://react-eagleeye.js.org/getting-started">Getting Started</a></b>.
 
