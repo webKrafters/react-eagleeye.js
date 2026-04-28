@@ -80,7 +80,7 @@ const transformRenderCount = (
 	return netCount;
 };
 
-describe( 'ReactObservableContext', () => {
+describe( 'ReactEagleEye', () => {
 	describe( 'Provider-less', () => {
 		describe( 'applicable anywhere external of and within the application', () => {
 			describe( 'using connected store subscribers', () => {
