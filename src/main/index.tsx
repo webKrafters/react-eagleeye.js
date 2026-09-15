@@ -89,6 +89,7 @@ export class ObservableContext<T extends State> {
 	get useStream() {
 		const stream = this.consumer.stream;
 		return <const S extends SelectorMap>( selectorMap? : S ) => {
+			const strictMode = useRef( true );
 			const [ channel ] = useState(() => stream( selectorMap ));
 			const [ store, setStore ] = useState(() => ({
 				data: channel.data,
@@ -99,13 +100,19 @@ export class ObservableContext<T extends State> {
 				channel.selectorMap = selectorMap;
 			}, [ selectorMap ]);
 			useEffect(() => {
+				/* istanbul ignore next */
+				if( !strictMode.current ) { return }
 				channel.addListener(
 					'data-changed',
 					() => setStore({
 						...store, data: channel.data
 					} as unknown as Store<T, S> )
 				);
-				return () => channel.endStream();
+				strictMode.current = false;
+				return () => {
+					channel.endStream();
+					strictMode.current = true;
+				};
 			}, []);
 			return store;
 		};
