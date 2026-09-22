@@ -1,8 +1,3 @@
-import type {
-    ComponentType,
-    NamedExoticComponent
-} from 'react';
-
 export type {
     BaseType,
     ClearCommand,
@@ -84,5 +79,23 @@ export type OwnProps = IProps & Record<any, any>;
 
 export {
 	createContext as createEagleEye,
+    type AbstractObservable,
 	type ObservableContext as EagleEyeContext
 } from './main';
+
+export {
+    createContext as createEagleEyeUniversal
+} from './main/universal';
+
+export type {
+    Address as AddressUniversal,
+    BaseProviderPropsRaw as BaseProviderPropsRawUniversal,
+    EagleEyeUniversal,
+    IProviderProps as IProviderPropsUniversal,
+    Observable as ObservableUniversal,
+    ProviderProps as ProviderPropsUniversal,
+    ProviderPropsPrimitive as ProviderPropsPrimitiveUniversal,
+    ProviderPropsRaw as ProviderPropsRawUniversal,
+    RefProps as RefPropsUniversal,
+    WithChildren as WithChildrenUniversal
+} from './main/universal';

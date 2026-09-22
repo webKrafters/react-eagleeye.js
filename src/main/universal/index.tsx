@@ -8,7 +8,6 @@ import {
 	JSX,
 	useState,
 	useEffect,
-	useRef,
 	useCallback
 } from 'react';
 
@@ -213,7 +212,7 @@ export class EagleEyeUniversal<T extends State> {
 		this._context = _createContext<string>( '0:0' );
 		this._pCache = this.defineProvider();
 		this._obs = new ObsResource<AbstractObservable<any>>();
-		this._util = createUtilityFor( this );
+		this._util = new Utility( this );
 	}
 
 	get resourceMap() { return this._obs }
@@ -247,6 +246,14 @@ export class EagleEyeUniversal<T extends State> {
 				return Container;
 			}
 		};
+	}
+
+	getIdOf( observable : AbstractObservable<T> ) {
+		return this._util.getIdOf( observable );
+	}
+
+	getObservableAt<const ID extends string>( id : ID ) {
+		return this._util.getObservableAt( id );
 	}
 
 	private defineProvider() {
@@ -346,18 +353,6 @@ class Utility<T extends State> {
 		this.context.resourceMap.acquire( targetId, target );
 		return { target, targetId } as Point<T, ID>;
 	}
-
-	tryObservableAt<const ID extends string>( targetId : ID ) {
-		const observable = this.getObservableAt<ID>( targetId );
-		if( !observable ) {
-			throw new Error( `No observable entry found for the key bearing the target ID( ${ targetId } ).` );
-		}
-		return observable;
-	}
-}
-
-export function createUtilityFor<T extends State>( context : EagleEyeUniversal<T> ) {
-	return new Utility( context );
 }
 
 export function createContext<T extends State>() { return new EagleEyeUniversal<T>() }
