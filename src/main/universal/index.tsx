@@ -283,7 +283,7 @@ export class EagleEyeUniversal<T extends State> {
 				targetId = me.provide<ID>( props ).targetId;
 			} else {
 				targetId = props.targetId;
-				if( !this._util.getObservableAt( targetId ) ) {
+				if( !me._util.getObservableAt( targetId ) ) {
 					throw new Error( `No valid observable instance found at target ID, ${ targetId }`);
 				}
 			}
