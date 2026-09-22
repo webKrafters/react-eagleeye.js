@@ -1,4 +1,4 @@
-import type { ElementType, FC, ReactNode } from 'react';
+import type { ElementType, FC, JSX, ReactNode } from 'react';
 
 import type {
 	Channel,
