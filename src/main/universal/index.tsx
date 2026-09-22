@@ -206,21 +206,26 @@ export class EagleEyeUniversal<T extends State> {
 	private _context : Context<string>;
 	private _pCache = null as unknown as ReturnType<EagleEyeUniversal<T>["defineProvider"]>;
 	private _obs = null as unknown as ObsResource<AbstractObservable<any>>;
+	private _sCache = null as unknown as ReturnType<EagleEyeUniversal<T>["defineStreamHook"]>;
 	private _util = null as Utility<T>;
 	
 	constructor() {
 		this._context = _createContext<string>( '0:0' );
 		this._pCache = this.defineProvider();
 		this._obs = new ObsResource<AbstractObservable<any>>();
+		this._sCache = this.defineStreamHook();
 		this._util = new Utility( this );
 	}
 
 	get resourceMap() { return this._obs }
 
+	/** context provider component */
 	get Provider() { return this._pCache }
 
-	get useStream() { return this._useStream.bind( this ) }
+	/** use stream hook */
+	get useStream() { return this._sCache }
 
+	/** context provider - imperative form */
 	provide<const ID extends string>( props? : ProviderProps<T, ID> ) : Point<T, ID>;
 	provide<const ID extends string>( props? : ProviderPropsRaw<T, ID> ) : Point<T, ID>;
 	provide<const ID extends string>( props? : ProviderPropsPrimitive<T, ID> ) : Point<T, ID>;
@@ -233,6 +238,7 @@ export class EagleEyeUniversal<T extends State> {
 		return this._util.pointAt<ID>( observable );
 	}
 
+	/** connects multiple components to a single stream */
 	stream<const S extends SelectorMap>( selectorMap? : S ) {
 		const { useStream } = this;
 		return {
@@ -293,7 +299,7 @@ export class EagleEyeUniversal<T extends State> {
 		return provide;
 	}
 
-	private _useStream() {
+	private defineStreamHook() {
 		return <const S extends SelectorMap>( selectorMap : S ) => {
 			const [ sMapHash, updateSMapHash ] = useState(() => this._util.hashSelectorMap( selectorMap ));
 
@@ -320,7 +326,7 @@ export class EagleEyeUniversal<T extends State> {
 			useEffect(() => updateStoreHook( getStoreHook() ), [ sMapHash ]);
 
 			return useStore();
-		}
+		};
 	}
 }
 
