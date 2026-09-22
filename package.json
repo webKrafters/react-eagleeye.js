@@ -125,7 +125,7 @@
     "test:watch": "eslint --fix && jest --updateSnapshot --watchAll"
   },
   "types": "dist/index.d.ts",
-  "version": "1.1.0-alpha.2",
+  "version": "1.1.0-alpha.3",
   "dependencies": {
     "@webkrafters/eagleeye": "^1.0.8",
     "js-sha512": "^0.9.0",

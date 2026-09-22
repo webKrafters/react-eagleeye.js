@@ -103,7 +103,7 @@ interface IResource<W extends WeakKey>{
 /** format: chs.registry = {[sMapHash : string] : {channel : WeakRef<Channel>, numConnections : number, store : Store<T, S> }} */
 class ChsResource<W extends Channel> implements IResource<W> {
 	private _finalizer = new FinalizationRegistry<string>( s => this.finalize( s ) );
-	private _registry : Record<string, ChannelEntry>;
+	private _registry = {} as Record<string, ChannelEntry>;
 	acquire( sMapHash: string, resource: W ) {
 		const useStore = () => {
 			const [ store, setStore ] = useState(() => makeStore( resource ));
@@ -152,7 +152,7 @@ class ObsResource<W extends AbstractObservable<TemplateType2<W>>> implements IRe
 	private _finalizer = new FinalizationRegistry<string>( regKey => {
 		delete this._registry[ regKey ];
 	} )
-	private _registry : Record<string, Entry>;
+	private _registry = {} as Record<string, Entry>;
 	acquire( regNum: string, resource: W ) {
 		this._registry[ regNum ] = {
 			channels: new ChsResource<Channel>(),
