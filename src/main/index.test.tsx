@@ -12,24 +12,22 @@ import {
 
 import getProperty from '@webkrafters/get-property';
 
-import React, { FC } from 'react';
+import {
+	ComponentType,
+	FC,
+	memo,
+	ReactNode,
+	useMemo
+} from 'react';
 
 import {
-	cleanup as cleanupPerfTest,
-	type DefaultPerfToolsField,
-	perf,
-	RenderCountField,
-	type PerfTools,
-	wait
-} from 'react-performance-testing';
-
-import {
+	act,
 	cleanup,
-	fireEvent,
 	render,
-	screen,
-	SelectorMatcherOptions
+	screen
 } from '@testing-library/react';
+
+import userEvent from '@testing-library/user-event';
 
 import '@testing-library/jest-dom';
 
@@ -44,19 +42,19 @@ import {
 
 import { isReadonly } from '../test-artifacts/utils';
 
-import createSourceData, {
-	type SourceData
-} from '../test-artifacts/data/create-state-obj';
+import { useRenderCounter, withRenderCounter } from '../test-artifacts/utils/performance';
+
+import createSourceData, { type SourceData } from '../test-artifacts/data/create-state-obj';
 
 import {
 	defaultState,
 	createNormalClient,
 	TestState
 } from './test-apps/normal';
-import { createConnectedClient } from './test-apps/with-connected-children';
-import { createPureClient } from './test-apps/with-pure-children';
 
-type PerfValue = PerfTools<DefaultPerfToolsField>;
+import { createConnectedClient } from './test-apps/with-connected-children';
+
+import { createPureClient } from './test-apps/with-pure-children';
 
 beforeAll(() => {
 	jest.spyOn( console, 'log' ).mockImplementation(() => {});
@@ -65,27 +63,12 @@ beforeAll(() => {
 afterAll(() => jest.resetAllMocks());
 afterEach( cleanup );
 
-const transformRenderCount = (
-	renderCount : PerfValue["renderCount"],
-	baseRenderCount : Record<string,any> = {}
-) => {
-	const netCount : typeof baseRenderCount = {};
-	for( const k of new Set([
-		...Object.keys( renderCount.current ),
-		...Object.keys( baseRenderCount )
-	]) ) {
-		// @ts-expect-error
-		netCount[ k ] = ( renderCount.current[ k ]?.value || 0 ) - ( baseRenderCount[ k ] || 0 );
-	}
-	return netCount;
-};
-
 describe( 'ReactEagleEye', () => {
 	describe( 'Provider-less', () => {
 		describe( 'applicable anywhere external of and within the application', () => {
 			describe( 'using connected store subscribers', () => {
 				let ObservableContext : ObservableContextType<Partial<TestState>>;
-				let AppWithConnectedChildren : React.FC;
+				let AppWithConnectedChildren : FC;
 				beforeEach(() => {
 					ObservableContext = createContext( defaultState as Partial<TestState> );
 					const client = createConnectedClient( ObservableContext );
@@ -93,103 +76,86 @@ describe( 'ReactEagleEye', () => {
 				});
 				afterAll(() => { ObservableContext.dispose() });
 				test( 'scenario 1', async () => {
-					const { renderCount } : PerfValue = perf( React );
-					render( <AppWithConnectedChildren /> );
-					let baseRenderCount : Record<string,any>;
-					await wait(() => { baseRenderCount = transformRenderCount( renderCount ) });
-					fireEvent.change( screen.getByLabelText( 'New Price:' ), { target: { value: '123' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update price' } ) );
-					await wait(() => {
-						expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-							App: 0,
-							CapitalizedDisplay: 0,
-							CustomerPhoneDisplay: 0,
-							Editor: 0,
-							'ObservableContext.Connected': 0,
-							PriceSticker: 1,
-							Product: 0,
-							ProductDescription: 0,
-							Reset: 0,
-							TallyDisplay: 1
-						});
-					});
-					cleanupPerfTest();
+					const user = userEvent.setup();
+					const { stats, ui } = withRenderCounter( <AppWithConnectedChildren /> );
+					render( ui );
+					stats.reset(); // remove initial render stats
+					await user.type( screen.getByLabelText( 'New Price:' ), '123' );
+					await user.click( screen.getByRole( 'button', { name: 'update price' } ) );
+					expect( stats.count ).toEqual( expect.objectContaining({
+						App: 0,
+						CapitalizedDisplay: 2,
+						CustomerPhoneDisplay: 0,
+						Editor: 0,
+						PriceSticker: 1,
+						Product:  0,
+						ProductDescription: 0,
+						Reset: 0,
+						TallyDisplay: 1
+					}) );
 				} );
 				test( 'scenario 2', async () => {
-					const { renderCount } : PerfValue = perf( React );
-					render( <AppWithConnectedChildren /> );
-					let baseRenderCount : Record<string,any>;
-					await wait(() => { baseRenderCount = transformRenderCount( renderCount ) });
-					fireEvent.change( screen.getByLabelText( 'New Color:' ), { target: { value: 'Navy' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update color' } ) );
-					await wait(() => {
-						expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-							App: 0,
-							CapitalizedDisplay: 0,
-							CustomerPhoneDisplay: 0,
-							Editor: 0,
-							'ObservableContext.Connected': 0,
-							PriceSticker: 0,
-							Product: 0,
-							ProductDescription: 1,
-							Reset: 0,
-							TallyDisplay: 1
-						});
-					});
-					cleanupPerfTest();
+					const user = userEvent.setup();
+					const { stats, ui } = withRenderCounter( <AppWithConnectedChildren /> );
+					render( ui );
+					stats.reset(); // remove initial render stats
+					await user.type( screen.getByLabelText( 'New Color:' ), 'Navy' );
+					await user.click( screen.getByRole( 'button', { name: 'update color' } ) );
+					expect( stats.count ).toEqual( expect.objectContaining({
+						App: 0,
+						CapitalizedDisplay: 2,
+						CustomerPhoneDisplay: 0,
+						Editor: 0,
+						PriceSticker: 0,
+						Product: 0,
+						ProductDescription: 1,
+						Reset: 0,
+						TallyDisplay: 1
+					}) );
 				} );
 				test( 'scenario 3', async () => {
-					const { renderCount } : PerfValue = perf( React );
-					render( <AppWithConnectedChildren /> );
-					let baseRenderCount : Record<string,any>;
-					await wait(() => { baseRenderCount = transformRenderCount( renderCount ) });
-					fireEvent.change( screen.getByLabelText( 'New Type:' ), { target: { value: 'Bag' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update type' } ) );
-					await wait(() => {
-						expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-							App: 0,
-							CapitalizedDisplay: 0,
-							CustomerPhoneDisplay: 0,
-							Editor: 0,
-							'ObservableContext.Connected': 0,
-							PriceSticker: 0,
-							Product: 0,
-							ProductDescription: 1,
-							Reset: 0,
-							TallyDisplay: 1
-						});
-					});
-					cleanupPerfTest();
+					const user = userEvent.setup();
+					const { stats, ui } = withRenderCounter( <AppWithConnectedChildren /> );
+					render( ui );
+					stats.reset(); // remove initial render stats
+					await user.type( screen.getByLabelText( 'New Type:' ), 'Bag' );
+					await user.click( screen.getByRole( 'button', { name: 'update type' } ) );
+					expect( stats.count ).toEqual( expect.objectContaining({
+						App: 0,
+						CapitalizedDisplay: 2,
+						CustomerPhoneDisplay: 0,
+						Editor: 0,
+						PriceSticker: 0,
+						Product: 0,
+						ProductDescription: 1,
+						Reset: 0,
+						TallyDisplay: 1
+					}) );
 				} );
 				test( 'does not render subscribed components for resubmitted changes', async () => {
-					const { renderCount } : PerfValue = perf( React );
-					render( <AppWithConnectedChildren /> );
-					fireEvent.change( screen.getByLabelText( 'New Type:' ), { target: { value: 'Bag' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update type' } ) );
-					let baseRenderCount : Record<string,any>;
-					await wait(() => { baseRenderCount = transformRenderCount( renderCount ) });
-					fireEvent.change( screen.getByLabelText( 'New Type:' ), { target: { value: 'Bag' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update type' } ) );
-					await wait(() => {
-						expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-							App: 0,
-							CapitalizedDisplay: 0,
-							CustomerPhoneDisplay: 0,
-							Editor: 0,
-							'ObservableContext.Connected': 0,
-							PriceSticker: 0,
-							Product: 0,
-							ProductDescription: 0,
-							Reset: 0,
-							TallyDisplay: 0
-						});
-					});
-					cleanupPerfTest();
+					const user = userEvent.setup();
+					const { stats, ui } = withRenderCounter( <AppWithConnectedChildren /> );
+					render( ui );
+					const btn = screen.getByRole( 'button', { name: 'update type' } );
+					await user.click( btn );
+					stats.reset();
+					await user.click( btn );
+					expect( stats.count ).toEqual( expect.objectContaining({
+						App: 0,
+						CapitalizedDisplay: 0,
+						CustomerPhoneDisplay: 0,
+						Editor: 0,
+						PriceSticker: 0,
+						Product: 0,
+						ProductDescription: 0,
+						Reset: 0,
+						TallyDisplay: 0
+					}) );
 				} );
 			} );
 	 		describe( 'using pure-component store subscribers', () => {
 				let ObservableContext : ObservableContextType<Partial<TestState>>;
-				let AppWithPureChildren : React.FC;
+				let AppWithPureChildren : FC;
 				beforeEach(() => {
 					ObservableContext = createContext( defaultState as Partial<TestState> );
 					const client = createPureClient( ObservableContext );
@@ -197,99 +163,87 @@ describe( 'ReactEagleEye', () => {
 				});
 				afterAll(() => { ObservableContext.dispose() });
 				test( 'scenario 1', async () => {
-					const { renderCount } : PerfValue = perf( React );
-					render( <AppWithPureChildren /> );
-					let baseRenderCount : Record<string,any>;
-					await wait(() => { baseRenderCount = transformRenderCount( renderCount ) });
-					fireEvent.change( screen.getByLabelText( 'New Price:' ), { target: { value: '123' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update price' } ) );
-					await wait(() => {
-						expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-							App: 0,
-							CapitalizedDisplay: 0,
-							CustomerPhoneDisplay: 0,
-							Editor: 0,
-							PriceSticker: 1,
-							Product: 0,
-							ProductDescription: 0,
-							Reset: 0,
-							TallyDisplay: 1
-						});
-					});
-					cleanupPerfTest();
+					const user = userEvent.setup();
+					const { stats, ui } = withRenderCounter( <AppWithPureChildren /> );
+					render( ui );
+					stats.reset(); // remove initial render stats
+					await user.type( screen.getByLabelText( 'New Price:' ), '123' );
+					await user.click( screen.getByRole( 'button', { name: 'update price' } ) );
+					expect( stats.count ).toEqual( expect.objectContaining({
+						App: 0,
+						CapitalizedDisplay: 2,
+						CustomerPhoneDisplay: 0,
+						Editor: 0,
+						PriceSticker: 1,
+						Product: 0,
+						ProductDescription: 0,
+						Reset: 0,
+						TallyDisplay: 1
+					}) );
 				} );
 				test( 'scenario 2', async () => {
-					const { renderCount } : PerfValue = perf( React );
-					render( <AppWithPureChildren /> );
-					let baseRenderCount : Record<string,any>;
-					await wait(() => { baseRenderCount = transformRenderCount( renderCount ) });
-					fireEvent.change( screen.getByLabelText( 'New Color:' ), { target: { value: 'Navy' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update color' } ) );
-					await wait(() => {
-						expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-							App: 0,
-							CapitalizedDisplay: 0,
-							CustomerPhoneDisplay: 0,
-							Editor: 0,
-							PriceSticker: 0,
-							Product: 0,
-							ProductDescription: 1,
-							Reset: 0,
-							TallyDisplay: 1
-						});
-					});
-					cleanupPerfTest();
+					const user = userEvent.setup();
+					const { stats, ui } = withRenderCounter( <AppWithPureChildren /> );
+					render( ui );
+					stats.reset(); // remove initial render stats
+					await user.type( screen.getByLabelText( 'New Color:' ), 'Navy' );
+					await user.click( screen.getByRole( 'button', { name: 'update color' } ) );
+					expect( stats.count ).toEqual( expect.objectContaining({
+						App: 0,
+						CapitalizedDisplay: 2,
+						CustomerPhoneDisplay: 0,
+						Editor: 0,
+						PriceSticker: 0,
+						Product: 0,
+						ProductDescription: 1,
+						Reset: 0,
+						TallyDisplay: 1
+					}) );
 				} );
 				test( 'scenario 3', async () => {
-					const { renderCount } : PerfValue = perf( React );
-					render( <AppWithPureChildren /> );
-					let baseRenderCount : Record<string,any>;
-					await wait(() => { baseRenderCount = transformRenderCount( renderCount ) });
-					fireEvent.change( screen.getByLabelText( 'New Type:' ), { target: { value: 'Bag' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update type' } ) );
-					await wait(() => {
-						expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-							App: 0,
-							CapitalizedDisplay: 0,
-							CustomerPhoneDisplay: 0,
-							Editor: 0,
-							PriceSticker: 0,
-							Product: 0,
-							ProductDescription: 1,
-							Reset: 0,
-							TallyDisplay: 1
-						});
-					});
-					cleanupPerfTest();
+					const user = userEvent.setup();
+					const { stats, ui } = withRenderCounter( <AppWithPureChildren /> );
+					render( ui );
+					stats.reset(); // remove initial render stats
+					await user.type( screen.getByLabelText( 'New Type:' ), 'Bag' );
+					await user.click( screen.getByRole( 'button', { name: 'update type' } ) );
+					expect( stats.count ).toEqual( expect.objectContaining({
+						App: 0,
+						CapitalizedDisplay: 2,
+						CustomerPhoneDisplay: 0,
+						Editor: 0,
+						PriceSticker: 0,
+						Product: 0,
+						ProductDescription: 1,
+						Reset: 0,
+						TallyDisplay: 1
+					}) );
 				} );
 				test( 'does not render subscribed components for resubmitted changes', async () => {
-					const { renderCount } : PerfValue = perf( React );
-					render( <AppWithPureChildren /> );
-					fireEvent.change( screen.getByLabelText( 'New Type:' ), { target: { value: 'Bag' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update type' } ) );
-					let baseRenderCount : Record<string,any>;
-					await wait(() => { baseRenderCount = transformRenderCount( renderCount ) });
-					fireEvent.change( screen.getByLabelText( 'New Type:' ), { target: { value: 'Bag' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update type' } ) );
-					await wait(() => {
-						expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-							App: 0,
-							CapitalizedDisplay: 0,
-							CustomerPhoneDisplay: 0,
-							Editor: 0,
-							PriceSticker: 0,
-							Product: 0,
-							ProductDescription: 0,
-							Reset: 0,
-							TallyDisplay: 0
-						});
-					});
-					cleanupPerfTest();
+					const user = userEvent.setup();
+					const { stats, ui } = withRenderCounter( <AppWithPureChildren /> );
+					render( ui );
+					await user.type( screen.getByLabelText( 'New Type:' ), 'Bag' );
+					const btn = screen.getByRole( 'button', { name: 'update type' } );
+					await user.click( btn );
+					stats.reset();
+					await user.click( btn );
+					expect( stats.count ).toEqual( expect.objectContaining({
+						App: 0,
+						CapitalizedDisplay: 0,
+						CustomerPhoneDisplay: 0,
+						Editor: 0,
+						PriceSticker: 0,
+						Product: 0,
+						ProductDescription: 0,
+						Reset: 0,
+						TallyDisplay: 0
+					}) );
 				} );
 			} );
 			describe( 'using non pure-component store subscribers', () => {
 				let ObservableContext : ObservableContextType<Partial<TestState>>;
-				let AppNormal : React.FC;
+				let AppNormal : FC;
 				beforeEach(() => {
 					ObservableContext = createContext( defaultState as Partial<TestState> );
 					const client = createNormalClient( ObservableContext );
@@ -297,247 +251,15 @@ describe( 'ReactEagleEye', () => {
 				});
 				afterAll(() => { ObservableContext.dispose() });
 				test( 'scenario 1', async () => {
-					const { renderCount } : PerfValue = perf( React );
-					render( <AppNormal /> );
-					let baseRenderCount : Record<string,any>;
-					await wait(() => { baseRenderCount = transformRenderCount( renderCount ) });
-					fireEvent.change( screen.getByLabelText( 'New Price:' ), { target: { value: '123' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update price' } ) );
-					await wait(() => {
-						expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-							App: 0,
-							CapitalizedDisplay: 0,
-							CustomerPhoneDisplay: 1,
-							Editor: 0,
-							PriceSticker: 1,
-							Product: 0,
-							ProductDescription: 0,
-							Reset: 1,
-							TallyDisplay: 1
-						});
-					});
-					cleanupPerfTest();
-				} );
-				test( 'scenario 2', async () => {
-					const { renderCount } : PerfValue = perf( React );
-					render( <AppNormal /> );
-					let baseRenderCount : Record<string,any>;
-					await wait(() => { baseRenderCount = transformRenderCount( renderCount ) });
-					fireEvent.change( screen.getByLabelText( 'New Color:' ), { target: { value: 'Navy' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update color' } ) );
-					await wait(() => {
-						expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-							App: 0,
-							CapitalizedDisplay: 0,
-							CustomerPhoneDisplay: 1,
-							Editor: 0,
-							PriceSticker: 0,
-							Product: 0,
-							ProductDescription: 1,
-							Reset: 1,
-							TallyDisplay: 1
-						});
-					});
-					cleanupPerfTest();
-				} );
-				test( 'scenario 3', async () => {
-					const { renderCount } : PerfValue = perf( React );
-					render( <AppNormal /> );
-					let baseRenderCount : Record<string,any>;
-					await wait(() => { baseRenderCount = transformRenderCount( renderCount ) });
-					fireEvent.change( screen.getByLabelText( 'New Type:' ), { target: { value: 'Bag' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update type' } ) );
-					await wait(() => {
-						expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-							App: 0,
-							CapitalizedDisplay: 0,
-							CustomerPhoneDisplay: 1,
-							Editor: 0,
-							PriceSticker: 0,
-							Product: 0,
-							ProductDescription: 1,
-							Reset: 1,
-							TallyDisplay: 1
-						});
-					});
-					cleanupPerfTest();
-				} );
-				test( 'does not render resubmitted changes', async () => {
-					const { renderCount } : PerfValue = perf( React );
-					render( <AppNormal /> );
-					fireEvent.change( screen.getByLabelText( 'New Type:' ), { target: { value: 'Bag' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update type' } ) );
-					let baseRenderCount : Record<string,any>;
-					await wait(() => { baseRenderCount = transformRenderCount( renderCount ) });
-					fireEvent.change( screen.getByLabelText( 'New Type:' ), { target: { value: 'Bag' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update type' } ) );
-					await wait(() => {
-						expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-							App: 0,
-							CapitalizedDisplay: 0,
-							CustomerPhoneDisplay: 0,
-							Editor: 0,
-							PriceSticker: 0,
-							Product: 0,
-							ProductDescription: 0,
-							Reset: 0,
-							TallyDisplay: 0
-						});
-					});
-					cleanupPerfTest();
-				} );
-			} );
-		} );
-	} );
-	describe( 'store updates from outside the Provider tree', () => {
-		describe( 'with connected component children', () => {let ObservableContext : ObservableContextType<Partial<TestState>>;
-			let AppWithConnectedChildren : React.FC;
-			beforeEach(() => {
-				ObservableContext = createContext( defaultState as Partial<TestState> );
-				const client = createConnectedClient( ObservableContext );
-				AppWithConnectedChildren = client.App;
-			});
-			afterAll(() => { ObservableContext.dispose() });
-			test( 'only re-renders Provider children affected by the Provider parent prop change', async () => {
-				const { renderCount } : PerfValue = perf( React );
-				render( <AppWithConnectedChildren /> );
-				let baseRenderCount : Record<string,any>;
-				await wait(() => { baseRenderCount = transformRenderCount( renderCount ); });
-				fireEvent.keyUp( screen.getByLabelText( 'Type:' ), { target: { value: 'A' } } );
-				await wait(() => {
-					expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-						App: 1,
-						CapitalizedDisplay: 0,
-						CustomerPhoneDisplay: 0,
-						Editor: 0,
-						'ObservableContext.Connected': 0,
-						PriceSticker: 0,
-						Product: 1,
-						ProductDescription: 1,
-						Reset: 0,
-						TallyDisplay: 1
-					});
-				});
-				cleanupPerfTest();
-			} );
-			test( 'only re-renders parts of the Provider tree directly affected by the Provider parent state update', async () => {
-				const { renderCount } : PerfValue = perf( React );
-				render( <AppWithConnectedChildren /> );
-				let baseRenderCount : Record<string,any>;
-				await wait(() => { baseRenderCount = transformRenderCount( renderCount ) });
-				fireEvent.keyUp( screen.getByLabelText( '$', {
-					key: '5',
-					code: 'Key5'
-				} as SelectorMatcherOptions ) );
-				await wait(() => {
-					expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({				
+					const user = userEvent.setup();
+					const { stats, ui } = withRenderCounter( <AppNormal /> );
+					render( ui );
+					stats.reset(); // remove initial render stats
+					await user.type( screen.getByLabelText( 'New Price:' ), '123' );
+					await user.click( screen.getByRole( 'button', { name: 'update price' } ) );
+					expect( stats.count ).toEqual( expect.objectContaining({
 						App: 0,
-						CapitalizedDisplay: 0,
-						CustomerPhoneDisplay: 0,
-						Editor: 0,
-						'ObservableContext.Connected': 0,
-						PriceSticker: 1,
-						Product: 0,
-						ProductDescription: 0,
-						Reset: 0,
-						TallyDisplay: 1
-					});
-				});
-				cleanupPerfTest();
-			} );
-	 	} );
-		describe( 'with pure-component children', () => {
-			let ObservableContext : ObservableContextType<Partial<TestState>>;
-			let AppWithPureChildren : React.FC;
-			beforeEach(() => {
-				ObservableContext = createContext( defaultState as Partial<TestState> );
-				const client = createPureClient( ObservableContext );
-				AppWithPureChildren = client.App;
-			});
-			afterAll(() => { ObservableContext.dispose() });
-			test( 'only re-renders Provider children affected by the Provider parent prop change', async () => {
-				const { renderCount } : PerfValue = perf( React );
-				render( <AppWithPureChildren /> );
-				let baseRenderCount : Record<string,any>;
-				await wait(() => { baseRenderCount = transformRenderCount( renderCount ); });
-				fireEvent.keyUp( screen.getByLabelText( 'Type:' ), { target: { value: 'A' } } );
-				await wait(() => {
-					expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-						App: 1,
-						CapitalizedDisplay: 0,
-						CustomerPhoneDisplay: 0,
-						Editor: 0,
-						PriceSticker: 0,
-						Product: 1,
-						ProductDescription: 1,
-						Reset: 0,
-						TallyDisplay: 1
-					});
-				});
-				cleanupPerfTest();
-			} );
-			test( 'only re-renders parts of the Provider tree directly affected by the Provider parent state update', async () => {
-				const { renderCount } : PerfValue = perf( React );
-				render( <AppWithPureChildren /> );
-				let baseRenderCount : Record<string,any>;
-				await wait(() => { baseRenderCount = transformRenderCount( renderCount ); });
-				fireEvent.keyUp( screen.getByLabelText( '$', { key: '5', code: 'Key5' } as SelectorMatcherOptions ) );
-				await wait(() => {
-					expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-						App: 0,
-						CapitalizedDisplay: 0,
-						CustomerPhoneDisplay: 0,
-						Editor: 0,
-						PriceSticker: 1,
-						Product: 0,
-						ProductDescription: 0,
-						Reset: 0,
-						TallyDisplay: 1
-					});
-				});
-				cleanupPerfTest();
-			} );
-		} );
-		describe( 'with non pure-component children ', () => {
-			let ObservableContext : ObservableContextType<Partial<TestState>>;
-			let AppNormal : React.FC;
-			beforeEach(() => {
-				ObservableContext = createContext( defaultState as Partial<TestState> );
-				const client = createNormalClient( ObservableContext );
-				AppNormal = client.App;
-			});
-			afterAll(() => { ObservableContext.dispose() });
-			test( 'only re-renders Provider children affected by the Provider parent prop change', async () => {
-				const { renderCount } : PerfValue = perf( React );
-				render( <AppNormal /> );
-				let baseRenderCount : Record<string,any>;
-				await wait(() => { baseRenderCount = transformRenderCount( renderCount ); });
-				fireEvent.keyUp( screen.getByLabelText( 'Type:' ), { target: { value: 'A' } } );
-				await wait(() => {
-					expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-						App: 1,
-						Product: 1,
-						Editor: 1,
-						TallyDisplay: 2,
-						CustomerPhoneDisplay: 2,
-						CapitalizedDisplay: 0,
-						Reset: 2,
-						ProductDescription: 2,
-						PriceSticker: 1
-					});
-				});
-				cleanupPerfTest();
-			} );
-			test( 'only re-renders parts of the Provider tree directly affected by the Provider parent state update', async () => {
-				const { renderCount } : PerfValue = perf( React );
-				render( <AppNormal /> );
-				let baseRenderCount : Record<string,any>;
-				await wait(() => { baseRenderCount = transformRenderCount( renderCount ); });
-				fireEvent.keyUp( screen.getByLabelText( '$', { key: '5', code: 'Key5' } as SelectorMatcherOptions ) );
-				await wait(() => {
-					expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-						App: 0,
-						CapitalizedDisplay: 0,
+						CapitalizedDisplay: 2,
 						CustomerPhoneDisplay: 1,
 						Editor: 0,
 						PriceSticker: 1,
@@ -545,16 +267,206 @@ describe( 'ReactEagleEye', () => {
 						ProductDescription: 0,
 						Reset: 1,
 						TallyDisplay: 1
-					});
-				});
-				cleanupPerfTest();
+					}) );
+				} );
+				test( 'scenario 2', async () => {
+					const user = userEvent.setup();
+					const { stats, ui } = withRenderCounter( <AppNormal /> );
+					render( ui );
+					stats.reset(); // remove initial render stats
+					await user.type( screen.getByLabelText( 'New Color:' ), 'Navy' );
+					await user.click( screen.getByRole( 'button', { name: 'update color' } ) );
+					expect( stats.count ).toEqual( expect.objectContaining({
+						App: 0,
+						CapitalizedDisplay: 2,
+						CustomerPhoneDisplay: 1,
+						Editor: 0,
+						PriceSticker: 0,
+						Product: 0,
+						ProductDescription: 1,
+						Reset: 1,
+						TallyDisplay: 1
+					}) );
+				} );
+				test( 'scenario 3', async () => {
+					const user = userEvent.setup();
+					const { stats, ui } = withRenderCounter( <AppNormal /> );
+					render( ui );
+					stats.reset(); // remove initial render stats
+					await user.type( screen.getByLabelText( 'New Type:' ), 'Bag' );
+					await user.click( screen.getByRole( 'button', { name: 'update type' } ) );
+					expect( stats.count ).toEqual( expect.objectContaining({
+						App: 0,
+						CapitalizedDisplay: 2,
+						CustomerPhoneDisplay: 1,
+						Editor: 0,
+						PriceSticker: 0,
+						Product: 0,
+						ProductDescription: 1,
+						Reset: 1,
+						TallyDisplay: 1
+					}) );
+				} );
+				test( 'does not render resubmitted changes', async () => {
+					const user = userEvent.setup();
+					const { stats, ui } = withRenderCounter( <AppNormal /> );
+					render( ui );
+					await user.type( screen.getByLabelText( 'New Type:' ), 'Bag' );
+					const btn = screen.getByRole( 'button', { name: 'update type' } );
+					await user.click( btn );
+					stats.reset();
+					await user.click( btn );
+					expect( stats.count ).toEqual( expect.objectContaining({App: 0,
+						CapitalizedDisplay: 0,
+						CustomerPhoneDisplay: 0,
+						Editor: 0,
+						PriceSticker: 0,
+						Product: 0,
+						ProductDescription: 0,
+						Reset: 0,
+						TallyDisplay: 0
+					}) );
+				} );
+			} );
+		} );
+	} );
+	describe( 'store updates from outside the Provider tree', () => {
+		describe( 'with connected component children', () => {let ObservableContext : ObservableContextType<Partial<TestState>>;
+			let AppWithConnectedChildren : FC;
+			beforeEach(() => {
+				ObservableContext = createContext( defaultState as Partial<TestState> );
+				const client = createConnectedClient( ObservableContext );
+				AppWithConnectedChildren = client.App;
+			});
+			afterAll(() => { ObservableContext.dispose() });
+			test( 'only re-renders Provider children affected by the Provider parent prop change', async () => {
+				const { stats, ui } = withRenderCounter( <AppWithConnectedChildren /> );
+				render( ui );
+				stats.reset(); // remove initial render statsconst count = {};
+				await userEvent.type( screen.getByLabelText( 'Type:' ), 'A' );
+				expect( stats.count ).toEqual( expect.objectContaining({
+					App: 1,
+					CapitalizedDisplay: 2,
+					CustomerPhoneDisplay: 0,
+					Editor: 0,
+					PriceSticker: 0,
+					Product: 1,
+					ProductDescription: 1,
+					Reset: 0,
+					TallyDisplay: 1
+				}) );
+			} );
+			test( 'only re-renders parts of the Provider tree directly affected by the Provider parent state update', async () => {
+				const { stats, ui } = withRenderCounter( <AppWithConnectedChildren /> );
+				render( ui );
+				stats.reset(); // remove initial render stats
+				await userEvent.type( screen.getByLabelText( '$' ), '5' );
+				expect( stats.count ).toEqual( expect.objectContaining({
+					App: 0,
+					CapitalizedDisplay: 2,
+					CustomerPhoneDisplay: 0,
+					Editor: 0,
+					PriceSticker: 1,
+					Product: 0,
+					ProductDescription: 0,
+					Reset: 0,
+					TallyDisplay: 1
+				}) );
+			} );
+	 	} );
+		describe( 'with pure-component children', () => {
+			let ObservableContext : ObservableContextType<Partial<TestState>>;
+			let AppWithPureChildren : FC;
+			beforeEach(() => {
+				ObservableContext = createContext( defaultState as Partial<TestState> );
+				const client = createPureClient( ObservableContext );
+				AppWithPureChildren = client.App;
+			});
+			afterAll(() => { ObservableContext.dispose() });
+			test( 'only re-renders Provider children affected by the Provider parent prop change', async () => {
+				const { stats, ui } = withRenderCounter( <AppWithPureChildren /> );
+				render( ui );
+				stats.reset(); // remove initial render stats
+				await userEvent.type( screen.getByLabelText( 'Type:' ), 'A' );
+				expect( stats.count ).toEqual( expect.objectContaining({
+					App: 1,
+					CapitalizedDisplay: 2,
+					CustomerPhoneDisplay: 0,
+					Editor: 0,
+					PriceSticker: 0,
+					Product: 1,
+					ProductDescription: 1,
+					Reset: 0,
+					TallyDisplay: 1
+				}) );
+			} );
+			test( 'only re-renders parts of the Provider tree directly affected by the Provider parent state update', async () => {
+				const { stats, ui } = withRenderCounter( <AppWithPureChildren /> );
+				render( ui );
+				stats.reset(); // remove initial render stats
+				await userEvent.type( screen.getByLabelText( '$' ), '5' );
+				expect( stats.count ).toEqual( expect.objectContaining({
+					App: 0,
+					CapitalizedDisplay: 2,
+					CustomerPhoneDisplay: 0,
+					Editor: 0,
+					PriceSticker: 1,
+					Product: 0,
+					ProductDescription: 0,
+					Reset: 0,
+					TallyDisplay: 1
+				}) );
+			} );
+		} );
+		describe( 'with non pure-component children ', () => {
+			let ObservableContext : ObservableContextType<Partial<TestState>>;
+			let AppNormal : FC;
+			beforeEach(() => {
+				ObservableContext = createContext( defaultState as Partial<TestState> );
+				const client = createNormalClient( ObservableContext );
+				AppNormal = client.App;
+			});
+			afterAll(() => { ObservableContext.dispose() });
+			test( 'only re-renders Provider children affected by the Provider parent prop change', async () => {
+				const { stats, ui } = withRenderCounter( <AppNormal /> );
+				render( ui );
+				stats.reset(); // remove initial render stats
+				await userEvent.type( screen.getByLabelText( 'Type:' ), 'A' );
+				expect( stats.count ).toEqual( expect.objectContaining({
+					App: 1,
+					Product: 1,
+					Editor: 1,
+					TallyDisplay: 2,
+					CustomerPhoneDisplay: 2,
+					CapitalizedDisplay: 4,
+					Reset: 2,
+					ProductDescription: 2,
+					PriceSticker: 1
+				}) );
+			} );
+			test( 'only re-renders parts of the Provider tree directly affected by the Provider parent state update', async () => {
+				const { stats, ui } = withRenderCounter( <AppNormal /> );
+				render( ui );
+				stats.reset(); // remove initial render stats
+				await userEvent.type( screen.getByLabelText( '$' ), '5' );
+				expect( stats.count ).toEqual( expect.objectContaining({
+					App: 0,
+					CapitalizedDisplay: 2,
+					CustomerPhoneDisplay: 1,
+					Editor: 0,
+					PriceSticker: 1,
+					Product: 0,
+					ProductDescription: 0,
+					Reset: 1,
+					TallyDisplay: 1
+				}) );
 			} );
 		} );
 	} );
 	describe( 'manipulating components externally through context store reference', () => {
 		let TestObservableCtx : ObservableContextType<Partial<SourceData>>;
 		let sourceData : Partial<SourceData>
-		let Client : React.FC;
+		let Client : FC;
 		beforeAll(() => { sourceData = createSourceData() });
 		beforeEach(() => {
 			TestObservableCtx = createContext( sourceData );
@@ -582,7 +494,6 @@ describe( 'ReactEagleEye', () => {
 		afterEach(() => { TestObservableCtx.dispose() })
 		test( 'is successful', async () => {
 			render( <Client /> );
-			await wait(() => {});
 			expect( screen.getByTestId( 'data-output' ).textContent ).toEqual(
 				JSON.stringify({
 					employer: 'VORTEXACO',
@@ -591,12 +502,11 @@ describe( 'ReactEagleEye', () => {
 				})
 			);
 			// externally update UI states
-			TestObservableCtx.store.setState({
+			act(() => TestObservableCtx.store.setState({
 				company: 'NEW CORPORATE INC',
 				isActive: true,
 				tags: { 5: 'MY SIXTH REMOTE' }
-			} as unknown as Partial<SourceData> );
-			await wait(() => {});
+			} as unknown as Partial<SourceData> ));
 			expect( screen.getByTestId( 'data-output' ).textContent ).toEqual(
 				JSON.stringify({
 					employer: 'NEW CORPORATE INC',
@@ -606,8 +516,7 @@ describe( 'ReactEagleEye', () => {
 			);
 
 			// externally reset any specific UI slice of the state
-			TestObservableCtx.store.resetState([ 'isActive' ]);
-			await wait(() => {});
+			act(() => TestObservableCtx.store.resetState([ 'isActive' ]));
 			expect( screen.getByTestId( 'data-output' ).textContent ).toEqual(
 				JSON.stringify({
 					employer: 'NEW CORPORATE INC',
@@ -631,8 +540,7 @@ describe( 'ReactEagleEye', () => {
 			expect( onUpdate ).not.toHaveBeenCalled();
 			expect( TestObservableCtx.store.getState([ 'name.first' ]) )
 				.toEqual({ name: { first: 'Amber' } });
-			fireEvent.click( screen.getByRole( 'button' ) );
-			await wait(() => {});
+			await userEvent.click( screen.getByRole( 'button' ) );
 			expect( TestObservableCtx.store.getState([ 'name.first' ]) )
 				.toEqual({ name: { first: 'Hallelujah' } });
 			expect( onUpdate ).toHaveBeenCalledTimes( 1 );
@@ -658,13 +566,11 @@ describe( 'ReactEagleEye', () => {
 			});
 
 			// externally reset the entire state
-			TestObservableCtx.store.resetState([ FULL_STATE_SELECTOR ]);
+			act(() => TestObservableCtx.store.resetState([ FULL_STATE_SELECTOR ]));
 			expect( TestObservableCtx.store.getState() ).toStrictEqual( sourceData );
-		});
+		}, 5e5 );
 		test( 'will reset state whenever ' + FULL_STATE_SELECTOR + ' appears in the list of target reset paths', async () => {
-			
 			render( <Client /> );
-			await wait(() => {});
 			expect( screen.getByTestId( 'data-output' ).textContent ).toEqual(
 				JSON.stringify({
 					employer: 'VORTEXACO',
@@ -673,12 +579,11 @@ describe( 'ReactEagleEye', () => {
 				})
 			);
 			// externally update UI states
-			TestObservableCtx.store.setState({
+			act(() => TestObservableCtx.store.setState({
 				company: 'NEW CORPORATE INC',
 				isActive: true,
 				tags: { 5: 'MY SIXTH REMOTE' }
-			} as unknown as Partial<SourceData> );
-			await wait(() => {});
+			} as unknown as Partial<SourceData> ));
 			expect( screen.getByTestId( 'data-output' ).textContent ).toEqual(
 				JSON.stringify({
 					employer: 'NEW CORPORATE INC',
@@ -688,8 +593,7 @@ describe( 'ReactEagleEye', () => {
 			);
 
 			// externally reset any specific UI slice of the state
-			TestObservableCtx.store.resetState([ 'isActive', FULL_STATE_SELECTOR ]);
-			await wait(() => {});
+			act(() => TestObservableCtx.store.resetState([ 'isActive', FULL_STATE_SELECTOR ]));
 			expect( screen.getByTestId( 'data-output' ).textContent ).toEqual(
 				JSON.stringify({
 					employer: 'VORTEXACO',
@@ -702,7 +606,7 @@ describe( 'ReactEagleEye', () => {
 	} );
 	describe( 'prehooks', () => {
 		let ObservableContext : ObservableContextType<Partial<TestState>>;
-		let Product : React.FC<{
+		let Product : FC<{
 			prehooks? : Prehooks;
 			type : string;
 		}>;
@@ -715,39 +619,39 @@ describe( 'ReactEagleEye', () => {
 		describe( 'resetState prehook', () => {
 			describe( 'when `resetState` prehook does not exist on the context', () => {
 				test( 'completes `store.resetState` method call', async () => {
-					const { renderCount } : PerfValue = perf( React );
+					const user = userEvent.setup();
 					const prehooks = {};
-					render( <Product prehooks={ prehooks } type="Computer" /> );
-					fireEvent.change( screen.getByLabelText( 'New Type:' ), { target: { value: 'Bag' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update type' } ) );
-					let baseRenderCount : Record<string,any> = {};
-					await wait(() => { baseRenderCount = transformRenderCount( renderCount ) });
-					fireEvent.click( screen.getByRole( 'button', { name: 'reset context' } ) );
-					await wait(() => {
-						expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-							CapitalizedDisplay: 0,
-							CustomerPhoneDisplay: 1,
-							Editor: 0,
-							PriceSticker: 0,
-							Product: 0,
-							ProductDescription: 1,
-							Reset: 1,
-							TallyDisplay: 1
-						});
-					});
-					cleanupPerfTest();
+					const { stats, ui } = withRenderCounter(
+						<Product prehooks={ prehooks } type="Computer" />
+					);
+					render( ui );
+					await user.type( screen.getByLabelText( 'New Type:' ), 'Bag' );
+					await user.click( screen.getByRole( 'button', { name: 'update type' } ) );
+					stats.reset();
+					await user.click( screen.getByRole( 'button', { name: 'reset context' } ) );
+					expect( stats.count ).toEqual( expect.objectContaining({
+						CapitalizedDisplay: 2,
+						CustomerPhoneDisplay: 1,
+						Editor: 0,
+						PriceSticker: 0,
+						Product: 0,
+						ProductDescription: 1,
+						Reset: 1,
+						TallyDisplay: 1
+					}) );
 				} );
 			} );
 			describe( 'when `resetState` prehook exists on the context', () => {
 				test( 'is called by the `store.resetState` method', async () => {
+					const user = userEvent.setup();
 					const prehooks = Object.freeze({ resetState: jest.fn().mockReturnValue( false ) });
-					render( <Product prehooks={ prehooks } type="Computer" /> );
-					fireEvent.change( screen.getByLabelText( 'New Type:' ), { target: { value: 'Bag' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update type' } ) );
-					fireEvent.change( screen.getByLabelText( 'New Color:' ), { target: { value: 'Teal' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update color' } ) );
+					render( <Product prehooks={ prehooks } type="Computer"  /> );
+					await user.type( screen.getByLabelText( 'New Type:' ), 'Bag' );
+					await user.click( screen.getByRole( 'button', { name: 'update type' } ) );
+					await user.type( screen.getByLabelText( 'New Color:' ), 'Teal' );
+					await user.click( screen.getByRole( 'button', { name: 'update color' } ) );
 					prehooks.resetState.mockClear();
-					fireEvent.click( screen.getByRole( 'button', { name: 'reset context' } ) );
+					await user.click( screen.getByRole( 'button', { name: 'reset context' } ) );
 					expect( prehooks.resetState ).toHaveBeenCalledTimes( 1 );
 					expect( prehooks.resetState.mock.calls[ 0 ][ 0 ]).toEqual({
 						[ AutoImmutableModule.REPLACE_TAG ]: {
@@ -785,131 +689,127 @@ describe( 'ReactEagleEye', () => {
 					});
 				} );
 				test( 'completes `store.setState` method call if `setState` prehook returns TRUTHY', async () => {
-					const { renderCount } : PerfValue = perf( React );
+					const user = userEvent.setup();
 					const prehooks = Object.freeze({ resetState: jest.fn().mockReturnValue( true ) });
-					render( <Product prehooks={ prehooks } type="Computer" /> );
-					fireEvent.change( screen.getByLabelText( 'New Type:' ), { target: { value: 'Bag' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update type' } ) );
-					let baseRenderCount : Record<string,any>;
-					await wait(() => { baseRenderCount = transformRenderCount( renderCount ) });
-					fireEvent.click( screen.getByRole( 'button', { name: 'reset context' } ) );
-					await wait(() => {
-						expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-							CapitalizedDisplay: 0,
-							CustomerPhoneDisplay: 1,
-							Editor: 0,
-							PriceSticker: 0,
-							Product: 0,
-							ProductDescription: 1,
-							Reset: 1,
-							TallyDisplay: 1
-						});
-					});
-					cleanupPerfTest();
+					const { stats, ui } = withRenderCounter(
+						<Product prehooks={ prehooks } type="Computer"  />
+					);
+					render( ui );
+					await user.type( screen.getByLabelText( 'New Type:' ), 'Bag' );
+					await user.click( screen.getByRole( 'button', { name: 'update type' } ) );
+					stats.reset();
+					await user.click( screen.getByRole( 'button', { name: 'reset context' } ) );
+					expect( stats.count ).toEqual( expect.objectContaining({
+						CapitalizedDisplay: 2,
+						CustomerPhoneDisplay: 1,
+						Editor: 0,
+						PriceSticker: 0,
+						Product: 0,
+						ProductDescription: 1,
+						Reset: 1,
+						TallyDisplay: 1
+					}) );
 				} );
 				test( 'aborts `store.setState` method call if `setState` prehook returns FALSY', async () => {
-					const { renderCount } : PerfValue = perf( React );
+					const user = userEvent.setup();
 					const prehooks = Object.freeze({ resetState: jest.fn().mockReturnValue( false ) });
-					render( <Product prehooks={ prehooks } type="Computer" /> );
-					fireEvent.change( screen.getByLabelText( 'New Type:' ), { target: { value: 'Bag' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update type' } ) );
-					let baseRenderCount : Record<string,any>;
-					await wait(() => { baseRenderCount = transformRenderCount( renderCount ) });
-					fireEvent.click( screen.getByRole( 'button', { name: 'reset context' } ) );
-					await wait(() => {
-						expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-							CapitalizedDisplay: 0,
-							CustomerPhoneDisplay: 0,
-							Editor: 0,
-							PriceSticker: 0,
-							Product: 0,
-							ProductDescription: 0,
-							Reset: 0,
-							TallyDisplay: 0
-						});
-					});
-					cleanupPerfTest();
+					const { stats, ui } = withRenderCounter(
+						<Product prehooks={ prehooks } type="Computer"  />
+					);
+					render( ui );
+					await user.type( screen.getByLabelText( 'New Type:' ), 'Bag' );
+					await user.click( screen.getByRole( 'button', { name: 'update type' } ) );
+					stats.reset();
+					await user.click( screen.getByRole( 'button', { name: 'reset context' } ) );
+					expect( stats.count ).toEqual( expect.objectContaining({
+						CapitalizedDisplay: 0,
+						CustomerPhoneDisplay: 0,
+						Editor: 0,
+						PriceSticker: 0,
+						Product: 0,
+						ProductDescription: 0,
+						Reset: 0,
+						TallyDisplay: 0
+					}) );
 				} );
 			} );
 		} );
 		describe( 'setState prehook', () => {
 			describe( 'when `setState` prehook does not exist on the context', () => {
 				test( 'completes `store.setState` method call', async () => {
-					const { renderCount } : PerfValue = perf( React );
+					const user = userEvent.setup();
 					const prehooks = Object.freeze( expect.any( Object ) );
-					render( <Product prehooks={ prehooks } type="Computer" /> );
-					let baseRenderCount : Record<string,any>;
-					await wait(() => { baseRenderCount = transformRenderCount( renderCount ) });
-					fireEvent.change( screen.getByLabelText( 'New Type:' ), { target: { value: 'Bag' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update type' } ) );
-					await wait(() => {
-						expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-							CapitalizedDisplay: 0,
-							CustomerPhoneDisplay: 1,
-							Editor: 0,
-							PriceSticker: 0,
-							Product: 0,
-							ProductDescription: 1,
-							Reset: 1,
-							TallyDisplay: 1
-						});
-					});
-					cleanupPerfTest();
+					const { stats, ui } = withRenderCounter(
+						<Product prehooks={ prehooks } type="Computer"  />
+					);
+					render( ui );
+					stats.reset(); // remove initial render stats
+					await user.type( screen.getByLabelText( 'New Type:' ), 'Bag' );
+					await user.click( screen.getByRole( 'button', { name: 'update type' } ) );
+					expect( stats.count ).toEqual( expect.objectContaining({
+						CapitalizedDisplay: 2,
+						CustomerPhoneDisplay: 1,
+						Editor: 0,
+						PriceSticker: 0,
+						Product: 0,
+						ProductDescription: 1,
+						Reset: 1,
+						TallyDisplay: 1
+					}) );
 				} );
 			} );
 			describe( 'when `setState` prehook exists on the context', () => {
 				test( 'is called by the `store.setState` method', async () => {
+					const user = userEvent.setup();
 					const prehooks = Object.freeze({ setState: jest.fn().mockReturnValue( false ) });
 					render( <Product prehooks={ prehooks } type="Computer" /> );
 					prehooks.setState.mockClear();
-					fireEvent.change( screen.getByLabelText( 'New Type:' ), { target: { value: 'Bag' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update type' } ) );
+					await user.type( screen.getByLabelText( 'New Type:' ), 'Bag' );
+					await user.click( screen.getByRole( 'button', { name: 'update type' } ) );
 					expect( prehooks.setState ).toHaveBeenCalledTimes( 1 );
 					expect( prehooks.setState ).toHaveBeenCalledWith({ type: 'Bag' });
 				} );
 				test( 'completes `store.setState` method call if `setState` prehook returns TRUTHY', async () => {
-					const { renderCount } : PerfValue = perf( React );
+					const user = userEvent.setup();
 					const prehooks = Object.freeze({ setState: jest.fn().mockReturnValue( true ) });
-					render( <Product prehooks={ prehooks } type="Computer" /> );
-					let baseRenderCount : Record<string,any>;
-					await wait(() => { baseRenderCount = transformRenderCount( renderCount ) });
-					fireEvent.change( screen.getByLabelText( 'New Type:' ), { target: { value: 'Bag' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update type' } ) );
-					await wait(() => {
-						expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-							CapitalizedDisplay: 0,
-							CustomerPhoneDisplay: 1,
-							Editor: 0,
-							PriceSticker: 0,
-							Product: 0,
-							ProductDescription: 1,
-							Reset: 1,
-							TallyDisplay: 1,
-						});
-					});
-					cleanupPerfTest();
-				}, 3e4 );
+					const { stats, ui } = withRenderCounter(
+						<Product prehooks={ prehooks } type="Computer"  />
+					);
+					render( ui );
+					stats.reset(); // remove initial render stats
+					await user.type( screen.getByLabelText( 'New Type:' ), 'Bag' );
+					await user.click( screen.getByRole( 'button', { name: 'update type' } ) );
+					expect( stats.count ).toEqual( expect.objectContaining({
+						CapitalizedDisplay: 2,
+						CustomerPhoneDisplay: 1,
+						Editor: 0,
+						PriceSticker: 0,
+						Product: 0,
+						ProductDescription: 1,
+						Reset: 1,
+						TallyDisplay: 1
+					}) );
+				} );
 				test( 'aborts `store.setState` method call if `setState` prehook returns FALSY', async () => {
-					const { renderCount } : PerfValue = perf( React );
+					const user = userEvent.setup();
 					const prehooks = Object.freeze({ setState: jest.fn().mockReturnValue( false ) });
-					render( <Product prehooks={ prehooks } type="Computer" /> );
-					let baseRenderCount : Record<string,any>;
-					await wait(() => { baseRenderCount = transformRenderCount( renderCount ) });
-					fireEvent.change( screen.getByLabelText( 'New Type:' ), { target: { value: 'Bag' } } );
-					fireEvent.click( screen.getByRole( 'button', { name: 'update type' } ) );
-					await wait(() => {
-						expect( transformRenderCount( renderCount, baseRenderCount ) ).toEqual({
-							CapitalizedDisplay: 0,
-							CustomerPhoneDisplay: 0,
-							Editor: 0,
-							PriceSticker: 0,
-							Product: 0,
-							ProductDescription: 0,
-							Reset: 0,
-    						TallyDisplay: 0,
-						});
-					});
-					cleanupPerfTest();
+					const { stats, ui } = withRenderCounter(
+						<Product prehooks={ prehooks } type="Computer" />
+					);
+					render( ui );
+					await user.type( screen.getByLabelText( 'New Type:' ), 'Bag' );
+					stats.reset();
+					await user.click( screen.getByRole( 'button', { name: 'update type' } ) );
+					expect( stats.count ).toEqual( expect.objectContaining({
+						CapitalizedDisplay: 0,
+						CustomerPhoneDisplay: 0,
+						Editor: 0,
+						PriceSticker: 0,
+						Product: 0,
+						ProductDescription: 0,
+						Reset: 0,
+						TallyDisplay: 0
+					}) );
 				} );
 			} );
 		} );
@@ -941,12 +841,12 @@ describe( 'ReactEagleEye', () => {
 					box: 'items.1.name'
 				};
 				connector = ObservableContext.connect( selectorMap );
-				let rawComp : React.FC<typeof compOneProps> = props => { compOneProps = props; return null };
+				let rawComp : FC<typeof compOneProps> = props => { compOneProps = props; return null };
 				ConnectedComponent1 = connector( rawComp );
 				rawComp = props => { compTwoProps = props; return null };
 				ConnectedComponent2 = connector( rawComp );
 				rawComp = props => { memoCompProps = props; return null };
-				const MemoizedComponent = React.memo( rawComp );
+				const MemoizedComponent = memo( rawComp );
 				MemoizedComponent.displayName = 'Connect.MemoizedComponent';
 				ConnectedMemoizedComponent = connector( MemoizedComponent );
 			});
@@ -994,7 +894,7 @@ describe( 'ReactEagleEye', () => {
 						anotherOwnProp: expect.anything(),
 						ownProp: expect.anything()
 					};
-					const WrappedComponent : React.ComponentType<ConnectProps<
+					const WrappedComponent : ComponentType<ConnectProps<
 						typeof ownProps,
 						typeof state,
 						typeof selectorMap
@@ -1027,7 +927,7 @@ describe( 'ReactEagleEye', () => {
 							fullBox2: 'items[1]',
 							nameFirstBox: 'items.0.name'
 						};
-						const T : React.FC<typeof capturedProps> = props => {
+						const T : FC<typeof capturedProps> = props => {
 							capturedProps = props;
 							return null
 						};
@@ -1155,54 +1055,54 @@ describe( 'ReactEagleEye', () => {
 						} );
 					} );
 				} );
-				test( 'updates internal state', async () => {
-					const { renderCount } : PerfValue = perf( React );
+				test( 'updates internal state', () => {
 					const testSelectors = [
 						'color',
 						'customer.name.last',
 						'price'
 					];
-					const TestClient : React.FC<{ data : {} }> = ({ data }) => (
-						<div data-testid="data-output">
-							{ JSON.stringify( data ) }
-						</div>
-					);
+					const TestClient : FC<{ data : {} }> = ({ data }) => {
+						useRenderCounter( 'TestClient' );
+						return (
+							<div data-testid="data-output">
+								{ JSON.stringify( data ) }
+							</div>
+						);
+					};
 					TestClient.displayName = 'TestClient';
 					const ConnectedTestClient = ObservableContext.connect( testSelectors )( TestClient );
-					render( <ConnectedTestClient /> );
-					await wait(() => {});
-					expect( ( renderCount.current.TestClient as RenderCountField ).value ).toBe( 1 );
+					const { stats, ui } = withRenderCounter( <ConnectedTestClient /> );
+					render( ui );
+					expect( stats.count.TestClient ).toBe( 1 );
 					const currentState = ObservableContext.store.getState();
-					ObservableContext.store.setState({ price: 45 });
+					act(() => ObservableContext.store.setState({ price: 45 }));
 					let newState = { ...defaultState, price: 45 };
-					await wait(() => {});
-					expect( ( renderCount.current.TestClient as RenderCountField ).value ).toBe( 2 );
+					expect( stats.count.TestClient ).toBe( 2 );
 					expect( currentState ).not.toEqual( newState );
 					expect( ObservableContext.store.getState() ).toEqual( newState );
-					ObservableContext.store.resetState([ FULL_STATE_SELECTOR ]); // resets store internal state
-					await wait(() => {});
-					expect( ( renderCount.current.TestClient as RenderCountField ).value ).toBe( 3 );
+					act(() => {
+						ObservableContext.store.resetState([ FULL_STATE_SELECTOR ]); // resets store internal state
+					});
+					expect( stats.count.TestClient ).toBe( 3 );
 					let currentState2 = ObservableContext.store.getState();
 					expect( currentState2 ).toStrictEqual( defaultState );
 					expect( currentState2 ).toStrictEqual( currentState );
-					ObservableContext.store.setState({ price: 300 });
+					act(() => ObservableContext.store.setState({ price: 300 }));
 					currentState2 = ObservableContext.store.getState();
-					await wait(() => {});
 					newState = { ...defaultState, price: 300 };
 					expect( currentState2 ).toEqual( newState );
 					expect( currentState2 ).not.toEqual( defaultState );
-					expect( ( renderCount.current.TestClient as RenderCountField ).value ).toBe( 4 );
+					expect( stats.count.TestClient ).toBe( 4 );
 					// parameterless external invocation of resetState is a noop
-					ObservableContext.store.resetState();
+					act( ObservableContext.store.resetState );
 					const currentState3 = ObservableContext.store.getState();
-					await wait(() => {});
-					expect( ( renderCount.current.TestClient as RenderCountField ).value ).toBe( 4 );
+					expect( stats.count.TestClient ).toBe( 4 );
 					expect( newState ).toEqual( currentState3 );
 					expect( defaultState ).not.toEqual( currentState3 );
 					expect( currentState2 ).toBe( currentState3 );
-					cleanupPerfTest();
-				}, 3e4 );
+				} );
 				test( 'subscribes to state changes', async () => {
+					const user = userEvent.setup();
 					const changes = {
 						color: 'Blue',
 						customer: {
@@ -1211,9 +1111,11 @@ describe( 'ReactEagleEye', () => {
 					};
 					const useTestStream = ObservableContext.useStream;
 					const TestClient = () => {
+						useRenderCounter( 'TestClient' );
 						const { data, resetState, setState } = useTestStream([ FULL_STATE_SELECTOR ]);
-						const doReset = () => resetState([ 'color', 'customer.phone']);
+						const doReset = () => resetState([ 'color', 'customer.phone' ]);
 						const doSet = () => setState( changes as TestState );
+						useRenderCounter( 'TestClient' );
 						return (
 							<>
 								<div data-testid="data-output">
@@ -1230,8 +1132,7 @@ describe( 'ReactEagleEye', () => {
 					const onChangeMock = jest.fn();
 					const unsub = ObservableContext.store.subscribe( 'data-updated', onChangeMock );
 					expect( onChangeMock ).not.toHaveBeenCalled();
-					fireEvent.click( screen.getByRole( 'button' ) ); // triggers setState
-					await wait(() => {});
+					await user.click( screen.getByRole( 'button' ) ); // triggers setState
 					expect( onChangeMock ).toHaveBeenCalled();
 					expect( onChangeMock.mock.calls[ 0 ][ 0 ] ).toEqual( changes );
 					expect( onChangeMock.mock.calls[ 0 ][ 1 ] ).toEqual([
@@ -1240,11 +1141,9 @@ describe( 'ReactEagleEye', () => {
 					expect( onChangeMock.mock.calls[ 0 ][ 2 ] ).toEqual( changes );
 					expect( onChangeMock.mock.calls[ 0 ][ 3 ] ).toEqual( expect.any( Function ) );
 					onChangeMock.mockClear();
-					fireEvent.click( screen.getByRole( 'button' ) ); // noop for repeat setState with same payload
-					await wait(() => {});
+					await user.click( screen.getByRole( 'button' ) ); // noop for repeat setState with same payload
 					expect( onChangeMock ).not.toHaveBeenCalled();
-					fireEvent.dblClick( screen.getByRole( 'button' ) ); // triggers resetState
-					await wait(() => {});
+					await user.dblClick( screen.getByRole( 'button' ) ); // triggers resetState
 					expect( onChangeMock ).toHaveBeenCalled();
 					expect( onChangeMock.mock.calls[ 0 ][ 0 ] ).toEqual({
 						color: {
@@ -1269,29 +1168,27 @@ describe( 'ReactEagleEye', () => {
 					onChangeMock.mockClear();
 					unsub();
 					let currDisplay = screen.getByTestId( 'data-output' ).textContent;
-					fireEvent.click( screen.getByRole( 'button' ) ); // triggers setState
-					await wait(() => {});
+					await user.click( screen.getByRole( 'button' ) ); // triggers setState
 					expect( currDisplay ).not.toEqual( // change occurred
 						screen.getByTestId( 'data-output' ).textContent
 					);
 					expect( onChangeMock ).not.toHaveBeenCalled();
 					currDisplay = screen.getByTestId( 'data-output' ).textContent
-					fireEvent.dblClick( screen.getByRole( 'button' ) ); // triggers resetState
-					await wait(() => {});
+					await user.dblClick( screen.getByRole( 'button' ) ); // triggers resetState
 					expect( currDisplay ).not.toEqual( // change occurred
 						screen.getByTestId( 'data-output' ).textContent
 					);
 					expect( onChangeMock ).not.toHaveBeenCalled();
-				} );
+				}, 5e5 );
 			} );
 		} );
 		describe( 'useStream(...)', () => {
 			type handler = ( ...args : Array<unknown> ) => void;
-			let Client : React.FC<{
+			let Client : FC<{
 				selectorMap? : SelectorMap,
 				onChange? : handler
 			}>;
-			let Wrapper : React.FC<{children : React.ReactNode}>;
+			let Wrapper : FC<{children : ReactNode}>;
 			let createObservable : ( value : SourceData ) => ({
 				ObservableContext : ObservableContextType<typeof value>;
 				Wrapper : typeof Wrapper;
@@ -1316,8 +1213,9 @@ describe( 'ReactEagleEye', () => {
 				Wrapper = observable.Wrapper;
 				/* eslint-disable react/display-name */
 				Client = ({ selectorMap, onChange = ( ...args ) => {} }) => {
+					useRenderCounter( 'TestClient' );
 					const store = useStream( selectorMap );
-					React.useMemo(() => onChange( store ), [ store ]);
+					useMemo(() => onChange( store ), [ store ]);
 					return (
 						<div data-testid="data-output">
 							{ JSON.stringify( store.data ) }
@@ -1473,10 +1371,8 @@ describe( 'ReactEagleEye', () => {
 									<Client selectorMap={ selectorMapOnRender } />
 								</Wrapper>
 							);
-							await wait(() => {});
 							expect( screen.getByTestId( 'data-output' ).textContent ).not.toEqual( '{}' );
 							rerender( <Wrapper><Client /></Wrapper> );
-							await wait(() => {});
 							expect( screen.getByTestId( 'data-output' ).textContent ).toEqual( '{}' );
 						} );
 					} );
@@ -1495,7 +1391,6 @@ describe( 'ReactEagleEye', () => {
 									/>
 								</Wrapper>
 							);
-							await wait(() => {});
 							_origData = _data;
 							expect( _origData ).toEqual({});
 							rerender(
@@ -1506,23 +1401,20 @@ describe( 'ReactEagleEye', () => {
 									/>
 								</Wrapper>
 							);
-							await wait(() => {});
 							expect( _data ).toBe( _origData );
 						} );
 						test( 'performs no state data update', async () => {
 							const { rerender } = render( <Wrapper><Client /></Wrapper> );
-							await wait(() => {});
 							const origDisplay = screen.getByTestId( 'data-output' ).textContent;
 							expect( origDisplay ).toEqual( '{}' );
 							rerender( <Wrapper><Client selectorMap={{}} /></Wrapper> );
-							await wait(() => {});
 						} );
 					} );
 				} );
 			} );
 			describe( 'store.data', () => {
 				interface Artefact<T extends {}> {
-					Client : React.FC<{selectorMap? : SelectorMap}>,
+					Client : FC<{selectorMap? : SelectorMap}>,
 					meta : { store : Store<T> }
 				};
 				let setup : <T extends {}>( ctx : ObservableContextType<T> ) => Artefact<T>;
@@ -1530,7 +1422,7 @@ describe( 'ReactEagleEye', () => {
 					setup = ctx => {
 						let meta = { store : {}  };
 						const useStream = ctx.useStream;
-						const Client : React.FC<{selectorMap : SelectorMap}> = ({
+						const Client : FC<{selectorMap : SelectorMap}> = ({
 							selectorMap
 						}) => {
 							meta.store = useStream( selectorMap );
@@ -1569,7 +1461,7 @@ describe( 'ReactEagleEye', () => {
 						tags: defaultState.tags
 					};
 					expect( meta.store.data ).toEqual( expectedValue );
-					meta.store.setState({
+					act(() => meta.store.setState({
 						friends: {
 							[ AutoImmutableModule.MOVE_TAG ]: [ -1, 1 ]
 						},
@@ -1583,8 +1475,7 @@ describe( 'ReactEagleEye', () => {
 							}
 						},
 						tags: { [ AutoImmutableModule.DELETE_TAG ]: [ 3, 5 ] }
-					} as unknown as SourceData );
-					await new Promise( resolve => setTimeout( resolve, 10 ) );
+					} as unknown as SourceData ));
 					expect( meta.store.data ).toEqual({
 						...expectedValue,
 						city3: 'Marakesh',
@@ -1596,7 +1487,7 @@ describe( 'ReactEagleEye', () => {
 						tags: [ 0, 1, 2, 4, 6 ].map( i => defaultState.tags[ i ] )
 					});
 					ObservableContext.dispose();
-				}, 3e4 );
+				} );
 				test( 'holds the complete current state object whenever `@@STATE` entry appears in the selectorMap', async () => {
 					const { ObservableContext, Wrapper } = createObservable( createSourceData() );
 					const { Client, meta } = setup( ObservableContext );
@@ -1624,7 +1515,7 @@ describe( 'ReactEagleEye', () => {
 						state: defaultState
 					};
 					expect( meta.store.data ).toEqual( expectedValue );
-					meta.store.setState({
+					act(() => meta.store.setState({
 						isActive: true,
 						history: {
 							places: {
@@ -1634,7 +1525,7 @@ describe( 'ReactEagleEye', () => {
 								}
 							}
 						}
-					} as unknown as SourceData );
+					} as unknown as SourceData ));
 					const updatedDataEquiv = createSourceData();
 					updatedDataEquiv.history.places[ 2 ].city = 'Marakesh';
 					updatedDataEquiv.history.places[ 2 ].country = 'Morocco';
@@ -1652,9 +1543,8 @@ describe( 'ReactEagleEye', () => {
 					const { ObservableContext, Wrapper } = createObservable( createSourceData() );
 					const { Client, meta } = setup( ObservableContext );
 					render( <Wrapper><Client /></Wrapper> );
-					await wait(() => {});
 					expect( meta.store.data ).toEqual({});
-					meta.store.setState({ // can still update state
+					act(() => meta.store.setState({ // can still update state
 						isActive: true,
 						history: {
 							places: {
@@ -1664,15 +1554,14 @@ describe( 'ReactEagleEye', () => {
 								}
 							}
 						}
-					} as unknown as SourceData );
-					await wait(() => {});
+					} as unknown as SourceData ));
 					expect( meta.store.data ).toEqual({});
 					ObservableContext.dispose();
 				} );
 			} );
 			describe( 'store.resetState', () => {
 				let sourceData : SourceData;
-				let Client : React.FC<{
+				let Client : FC<{
 					selectorMap? : Record<string, string>;
 					resetPaths? : Array<string>
 				}>;
@@ -1684,6 +1573,7 @@ describe( 'ReactEagleEye', () => {
 					Client = props => {
 						const { data, resetState } = useStream( props.selectorMap );
 						const doReset = () => resetState( props.resetPaths );
+						useRenderCounter( 'TestClient' );
 						return (
 							<>
 								<div data-testid="data-output">
@@ -1707,7 +1597,6 @@ describe( 'ReactEagleEye', () => {
 									/>
 								</Wrapper>
 							);
-							await wait(() => {});
 							const isActive2 = !sourceData.isActive;
 							expect( screen.getByTestId( 'data-output' ).textContent )
 								.toEqual( JSON.stringify({
@@ -1715,12 +1604,11 @@ describe( 'ReactEagleEye', () => {
 									isActive: sourceData.isActive,
 									tag6: sourceData.tags[ 5 ]
 								}) );
-							ObservableContext.store.setState({
+							act(() => ObservableContext.store.setState({
 								history: { places: { 2: { year: '3035' } } },
 								isActive: isActive2,
 								tags: { 5: 'JUST-TESTING' }
-							} as unknown as SourceData );
-							await wait(() => {});
+							} as unknown as SourceData ));
 							expect( screen.getByTestId( 'data-output' ).textContent )
 								.toEqual( JSON.stringify({
 									year3: '3035',
@@ -1741,8 +1629,7 @@ describe( 'ReactEagleEye', () => {
 									return tags;
 								})()
 							});
-							fireEvent.click( screen.getByRole( 'button' ) );
-							await wait(() => {});
+							await userEvent.click( screen.getByRole( 'button' ) );
 							expect( screen.getByTestId( 'data-output' ).textContent )
 								.toEqual( JSON.stringify({
 									year3: sourceData.history.places[2].year,
@@ -1752,65 +1639,55 @@ describe( 'ReactEagleEye', () => {
 							expect( ObservableContext.store.getState() ).toEqual({
 								...sourceData, isActive: isActive2
 							});
-						} );
+						}, 5e5 );
 					} );
 				} );
 				describe( 'when selectorMap is NOT present in the consumer', () => {
 					describe( 'and called with own property paths arguments to reset', () => {
-						test( 'resets with original slices and removes non-original slices for entries found in property paths', async () => {
+						test( '1xxx resets with original slices and removes non-original slices for entries found in property paths', async () => {
 							const args = [ 'blatant', 'company', 'xylophone', 'yodellers', 'zenith' ];
 							render( <Wrapper><Client resetPaths={ args } /></Wrapper> );
-							await wait(() => {});
 							const origTextContent = screen.getByTestId( 'data-output' ).textContent;
 							expect( origTextContent ).toEqual( '{}' );
-							ObservableContext.store.setState({
+							const incomingStream = {
 								blatant: true,
 								company: 'SOME NEW TEST INC.',
 								xylophone: 'Ruggedly melodic', 
 								yodellers: 'Cartoonishly joyful'
-							} as unknown as SourceData );
-							await wait(() => {});
+							} as unknown as SourceData;
+							act(() => ObservableContext.store.setState( incomingStream ));
 							expect( screen.getByTestId( 'data-output' ).textContent ).toBe( origTextContent );
 							expect( ObservableContext.store.getState() ).toEqual({
 								...sourceData,
-								blatant: true,
-								company: 'SOME NEW TEST INC.',
-								xylophone: 'Ruggedly melodic', 
-								yodellers: 'Cartoonishly joyful'
+								...incomingStream
 							});
-							fireEvent.click( screen.getByRole( 'button' ) );
-							await wait(() => {});
+							await userEvent.click( screen.getByRole( 'button' ) );
 							expect( screen.getByTestId( 'data-output' ).textContent ).toBe( origTextContent );
 							expect( ObservableContext.store.getState() ).toEqual( sourceData );
-						} );
+						}, 3e5 );
 					} );
 					describe( 'and called with NO own property paths arguments to reset', () => {
 						test( 'results in no-op', async () => {
 							render( <Wrapper><Client /></Wrapper> );
-							await wait(() => {});
 							const origTextContent = screen.getByTestId( 'data-output' ).textContent;
 							expect( origTextContent ).toEqual( '{}' );
-							ObservableContext.store.setState({
+							const incomingStream = {
 								blatant: true,
 								company: 'SOME NEW TEST INC.',
 								xylophone: 'Ruggedly melodic', 
 								yodellers: 'Cartoonishly joyful'
-							} as unknown as SourceData );
-							await wait(() => {});
+							} as unknown as SourceData
+							act(() => ObservableContext.store.setState( incomingStream ));
 							expect( screen.getByTestId( 'data-output' ).textContent ).toBe( origTextContent );
-							
 							const alteredState = ObservableContext.store.getState();
 							expect( alteredState ).toEqual({
 								...sourceData,
-								blatant: true,
-								company: 'SOME NEW TEST INC.',
-								xylophone: 'Ruggedly melodic', 
-								yodellers: 'Cartoonishly joyful'
+								...incomingStream
 							});
-							fireEvent.click( screen.getByRole( 'button' ) );
-							await wait(() => {});
+							await userEvent.click( screen.getByRole( 'button' ) );
 							expect( screen.getByTestId( 'data-output' ).textContent ).toBe( origTextContent );
-							expect( ObservableContext.store.getState() ).toBe( alteredState );						} );
+							expect( ObservableContext.store.getState() ).toBe( alteredState );
+						}, 3e4 );
 					} );
 				} );
 			} );
@@ -1868,7 +1745,7 @@ describe( 'ReactEagleEye', () => {
 					expect(() => {
 						// @ts-expect-error
 						ctx.cache = expect.any( AutoImmutableModule.default );
-					}).toThrow( 'Cannot set property cache of #<ObservableContext> which has only a getter' );
+					}).toThrow( 'Cannot set property cache of #<AbstractObservable> which has only a getter' );
 				} );
 				// @todo
 				test( 'furnishes this context active status', () => {
@@ -1877,7 +1754,7 @@ describe( 'ReactEagleEye', () => {
 					expect(() => {
 						// @ts-expect-error
 						ctx.closed = true;
-					}).toThrow( 'Cannot set property closed of #<ObservableContext> which has only a getter' );
+					}).toThrow( 'Cannot set property closed of #<AbstractObservable> which has only a getter' );
 					expect( ctx.closed ).toBe( false );
 					ctx.dispose();
 					expect( ctx.closed ).toBe( true );
@@ -1900,7 +1777,7 @@ describe( 'ReactEagleEye', () => {
 					expect(() => {
 						// @ts-expect-error
 						ctx.store = expect.any( Object );
-					}).toThrow( 'Cannot set property store of #<ObservableContext> which has only a getter' );
+					}).toThrow( 'Cannot set property store of #<AbstractObservable> which has only a getter' );
 				} );
 				test( 'furnishes useStream hook', () => {
 					expect( ctx.useStream ).toEqual( expect.any( Function ) );
