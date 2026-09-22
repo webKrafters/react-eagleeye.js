@@ -1644,7 +1644,7 @@ describe( 'ReactEagleEye', () => {
 				} );
 				describe( 'when selectorMap is NOT present in the consumer', () => {
 					describe( 'and called with own property paths arguments to reset', () => {
-						test( '1xxx resets with original slices and removes non-original slices for entries found in property paths', async () => {
+						test( 'resets with original slices and removes non-original slices for entries found in property paths', async () => {
 							const args = [ 'blatant', 'company', 'xylophone', 'yodellers', 'zenith' ];
 							render( <Wrapper><Client resetPaths={ args } /></Wrapper> );
 							const origTextContent = screen.getByTestId( 'data-output' ).textContent;
