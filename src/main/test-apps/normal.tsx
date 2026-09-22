@@ -13,6 +13,7 @@ import {
 } from '..';
 
 import { FULL_STATE_SELECTOR, Prehooks } from '../..';
+import { useRenderCounter } from '../../test-artifacts/utils/performance';
 
 export type TestState = {
 	color: string,
@@ -59,12 +60,14 @@ export function createNormalClient(
 		const { resetState } = useStream();
 		useEffect(() => console.log( 'Reset component rendered.....' ));
 		const reset = () => resetState([ FULL_STATE_SELECTOR ]);
+		useRenderCounter( 'Reset' );
 		return ( <button onClick={ reset }>reset context</button> );
 	};
 	Reset.displayName = 'Reset';
 
 	const CapitalizedDisplay : React.FC<{ text: string }> = ({ text }) => {
 		useEffect(() => console.log( `CapitalizedDisplay( ${ text } ) component rendered.....` ));
+		useRenderCounter( 'CapitalizedDisplay' );
 		return (
 			<>
 				{ `${ text } && ${ text[ 0 ]?.toUpperCase() }${ text.length > 1 ? text.slice( 1 ) : '' }` }
@@ -76,6 +79,7 @@ export function createNormalClient(
 	const CustomerPhoneDisplay : React.FC = () => {
 		const { data } = useStream({ phone: 'customer.phone' });
 		useEffect(() => console.log( 'CustomerPhoneDisplay component rendered.....' ));
+		useRenderCounter( 'CustomerPhoneDisplay' );
 		return ( <>{ `Phone: ${ data.phone ?? 'n.a.' }` }</> );
 	};
 	CustomerPhoneDisplay.displayName = 'CustomerPhoneDisplay';
@@ -89,6 +93,7 @@ export function createNormalClient(
 			price: 'price',
 			type: 'type'
 		});
+		useRenderCounter( 'TallyDisplay' );
 		useEffect(() => console.log( 'TallyDisplay component rendered.....' ));
 		return (
 			<div style={{ margin: '20px 0 10px' }}>
@@ -117,7 +122,7 @@ export function createNormalClient(
 						<tr><td><label>Color:</label></td><td>
 							<CapitalizedDisplay text={ color as unknown as string } />
 						</td></tr>
-						<tr><td><label>Price:</label></td><td>{ price.toFixed( 2 ) }</td></tr>
+						<tr><td><label>Price:</label></td><td>{ price!.toFixed( 2 ) }</td></tr>
 					</tbody>
 				</table>
 				<div style={{ textAlign: 'right' }}>
@@ -138,6 +143,7 @@ export function createNormalClient(
 		const priceInputRef = useRef<HTMLInputElement>( null );
 		const colorInputRef = useRef<HTMLInputElement>( null );
 		const typeInputRef = useRef<HTMLInputElement>( null );
+		useRenderCounter( 'Editor' );
 		const updateColor = () => setState({
 			color: colorInputRef.current!.value
 		});
@@ -210,6 +216,7 @@ export function createNormalClient(
 			data: {[K in 'c'|'t']: React.ReactNode}
 		};
 		useEffect(() => console.log( 'ProductDescription component rendered.....' ));
+		useRenderCounter( 'ProductDescription' );
 		return (
 			<div style={{ fontSize: 24 }}>
 				<strong>Description:</strong> { data.c } { data.t }
@@ -221,9 +228,10 @@ export function createNormalClient(
 	const PriceSticker : React.FC = () => {
 		const { data: { p } } = useStream({ p: 'price' });
 		useEffect(() => console.log( 'PriceSticker component rendered.....' ));
+		useRenderCounter( 'PriceSticker' );
 		return (
 			<div style={{ fontSize: 36, fontWeight: 800 }}>
-				${ p.toFixed( 2 ) }
+				${ p!.toFixed( 2 ) }
 			</div>
 		);
 	};
@@ -235,6 +243,7 @@ export function createNormalClient(
 		const { setState } = useStream();
 		useEffect(() => { ObservableContext.prehooks = prehooks! }, [ prehooks ]);
 		useEffect(() => setState({ type }), [ type ]);
+		useRenderCounter( 'Product' );
 		const overridePricing = ( e => setState({
 			price: Number(( e.target as HTMLInputElement ).value )
 		}) ) as KeyboardEventHandler<HTMLInputElement>;
@@ -263,6 +272,7 @@ export function createNormalClient(
 	const App : React.FC = () => {
 		const [ productType, setProductType ] = useState( 'Calculator' );
 		const updateType = ( e => setProductType(( e.target as HTMLInputElement ).value ) ) as KeyboardEventHandler<HTMLInputElement>;
+		useRenderCounter( 'App' );
 		return (
 			<div className="App">
 				<h1>Demo</h1>

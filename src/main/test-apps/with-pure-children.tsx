@@ -20,6 +20,7 @@ import {
 	defaultState,
 	TestState
 } from './normal';
+import { useRenderCounter } from '../../test-artifacts/utils/performance';
 
 export const {
 	App,
@@ -59,6 +60,7 @@ export function createPureClient(
 			type: 'type'
 		});
 		useEffect(() => console.log( 'TallyDisplay component rendered.....' ));
+		useRenderCounter( 'TallyDisplay' );
 		return (
 			<div style={{ margin: '20px 0 10px' }}>
 				<div style={{ float: 'left', fontSize: '1.75rem' }}>
@@ -86,7 +88,7 @@ export function createPureClient(
 						<tr><td><label>Color:</label></td><td>
 							<CapitalizedDisplay text={ color as unknown as string } />
 						</td></tr>
-						<tr><td><label>Price:</label></td><td>{ price.toFixed( 2 ) }</td></tr>
+						<tr><td><label>Price:</label></td><td>{ price!.toFixed( 2 ) }</td></tr>
 					</tbody>
 				</table>
 				<div style={{ textAlign: 'right' }}>
@@ -107,6 +109,8 @@ export function createPureClient(
 		useEffect(() => { ObservableContext.prehooks = prehooks! }, [ prehooks ]);
 		
 		useEffect(() => ObservableContext.store.setState({ type }), [ type ]);
+		
+		useRenderCounter( 'Product' );
 		
 		const overridePricing = ( e => {
 			ObservableContext.store.setState({
@@ -140,7 +144,7 @@ export function createPureClient(
 	const App : FC = () => {
 
 		const [ productType, setProductType ] = useState( 'Calculator' );
-
+		useRenderCounter( 'App' );
 		const updateType = ( e => setProductType(( e.target as HTMLInputElement ).value ) ) as  KeyboardEventHandler<HTMLInputElement>;
 		return (
 			<div className="App">

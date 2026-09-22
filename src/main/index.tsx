@@ -1,6 +1,7 @@
 import type { ElementType, FC, ReactNode } from 'react';
 
 import type {
+	Channel,
 	ConnectProps,
 	ExtractInjectedProps,
 	SelectorMap,
@@ -30,8 +31,9 @@ import {
 	State
 } from "@webkrafters/eagleeye";
 
-export class ObservableContext<T extends State> {
-	private consumer : EagleEyeContext<T>;
+
+export abstract class AbstractObservable<T extends State> {
+	private _consumer : EagleEyeContext<T>;
 	constructor(
 		value? : T,
 		prehooks? : Prehooks<T>,
@@ -43,20 +45,35 @@ export class ObservableContext<T extends State> {
 		storage? : IStorage<T>
 	);
 	constructor( value, prehooks, storage ) {
-		this.consumer = createEagleEye({ prehooks, storage, value });
+		this._consumer = createEagleEye({ prehooks, storage, value });
 	}
 
-	get cache(){ return this.consumer.cache }
+	get stream() { return this._consumer.stream }
 
-	get closed(){ return this.consumer.closed }
+	get cache(){ return this._consumer.cache }
+
+	get closed(){ return this._consumer.closed }
+
+	get prehooks() { return this._consumer.prehooks }
+
+	get storage() { return this._consumer.storage }
+
+	get store() { return this._consumer.store }
+
+	set prehooks( prehooks : Prehooks<T> ) {
+		this._consumer.prehooks = prehooks;
+	}
+
+	set storage( storage : IStorage<T> ) {
+		this._consumer.storage = storage;
+	}
+	
+	dispose(){ this._consumer.dispose() }
+}
+
+export class ObservableContext<T extends State> extends AbstractObservable<T> {
 
 	get connect() { return this._connect }
-
-	get prehooks() { return this.consumer.prehooks }
-
-	get storage() { return this.consumer.storage }
-
-	get store() { return this.consumer.store }
 
 	/** 
 	 * Actively monitors the store and triggers component re-render if any of the watched keys in the state objects changes
@@ -87,15 +104,11 @@ export class ObservableContext<T extends State> {
 	 * {myData: '@@STATE'} => {myData: state}
 	 */
 	get useStream() {
-		const stream = this.consumer.stream;
+		const stream = this.stream;
 		return <const S extends SelectorMap>( selectorMap? : S ) => {
 			const strictMode = useRef( true );
 			const [ channel ] = useState(() => stream( selectorMap ));
-			const [ store, setStore ] = useState(() => ({
-				data: channel.data,
-				resetState: channel.resetState.bind( channel ),
-				setState: channel.setState.bind( channel )
-			} as unknown as Store<T, S> ));
+			const [ store, setStore ] = useState(() => makeStore( channel ));
 			useEffect(() => {
 				channel.selectorMap = selectorMap;
 			}, [ selectorMap ]);
@@ -116,14 +129,6 @@ export class ObservableContext<T extends State> {
 			}, []);
 			return store;
 		};
-	}
-
-	set prehooks( prehooks : Prehooks<T> ) {
-		this.consumer.prehooks = prehooks;
-	}
-
-	set storage( storage : IStorage<T> ) {
-		this.consumer.storage = storage;
 	}
 
 	/**
@@ -160,8 +165,6 @@ export class ObservableContext<T extends State> {
 		}
 		return connector;
 	}
-	
-	dispose(){ this.consumer.dispose() }
 }
 
 /* istanbul ignore next */
@@ -187,6 +190,17 @@ const ChildMemo : FC<{ child: ReactNode }> = (() => {
 
 	return Guardian;
 })();
+
+export function makeStore<
+	T extends State,
+	S extends SelectorMap
+>( channel : Channel<T, S> ) {
+	return {
+		data: channel.data,
+		resetState: channel.resetState.bind( channel ),
+		setState: channel.setState.bind( channel )
+	} as unknown as Store<T, S>;
+}
 
 /* istanbul ignore next */
 function memoizeImmediateChildTree( children : ReactNode ) : ReactNode {

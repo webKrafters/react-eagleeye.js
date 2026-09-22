@@ -27,6 +27,8 @@ import {
 	defaultState
 } from './normal';
 
+import { useRenderCounter } from '../../test-artifacts/utils/performance';
+
 export const {
 	App,
 	CapitalizedDisplay, CustomerPhoneDisplay,
@@ -43,6 +45,7 @@ export function createConnectedClient(
 	const Reset : FC<Store<Partial<TestState>>> = ({ resetState }) => {
 		useEffect(() => console.log( 'Reset component rendered.....' ));
 		const reset = () => resetState();
+		useRenderCounter( 'Reset' );
 		return ( <button onClick={ reset }>reset context</button> );
 	};
 	Reset.displayName = 'Reset';
@@ -51,6 +54,7 @@ export function createConnectedClient(
 
 	const CustomerPhoneDisplay : FC<{ data: { phone: string } }> = ({ data }) => {
 		useEffect(() => console.log( 'CustomerPhoneDisplay component rendered.....' ));
+		useRenderCounter( 'CustomerPhoneDisplay' );
 		return `Phone: ${ data.phone ?? 'n.a.' }` as unknown as ReactElement;
 	};
 	CustomerPhoneDisplay.displayName = 'CustomerPhoneDisplay';
@@ -65,6 +69,7 @@ export function createConnectedClient(
 		}
 	}> = ({ data: { color, name, price, type } }) => {
 		useEffect(() => console.log( 'TallyDisplay component rendered.....' ));
+		useRenderCounter( 'TallyDisplay' );
 		return (
 			<div style={{ margin: '20px 0 10px' }}>
 				<div style={{ float: 'left', fontSize: '1.75rem' }}>
@@ -108,7 +113,7 @@ export function createConnectedClient(
 		name: 'customer.name',
 		price: 'price',
 		type: 'type'
-	})( TallyDisplay );
+	})( TallyDisplay as any );
 
 	const Editor : FC<Store<Partial<TestState>>> = ({ setState }) => {
 
@@ -119,6 +124,8 @@ export function createConnectedClient(
 		const colorInputRef = useRef<HTMLInputElement>( null );
 		const typeInputRef = useRef<HTMLInputElement>( null );
 
+		useRenderCounter( 'Editor' );
+				
 		const updateColor = () => setState({
 			color: colorInputRef.current?.value
 		});
@@ -195,6 +202,7 @@ export function createConnectedClient(
 		}
 	}> = ({ data }) => {
 		useEffect(() => console.log( 'ProductDescription component rendered.....' ));
+		useRenderCounter( 'ProductDescription' );
 		return (
 			<div style={{ fontSize: 24 }}>
 				<strong>Description:</strong> { data.c } { data.t }
@@ -210,6 +218,7 @@ export function createConnectedClient(
 
 	const PriceSticker : FC<{data: { p: number }}> = ({ data: { p } }) => {
 		useEffect(() => console.log( 'PriceSticker component rendered.....' ));
+		useRenderCounter( 'PriceSticker' );
 		return (
 			<div style={{ fontSize: 36, fontWeight: 800 }}>
 				${ p.toFixed( 2 ) }
@@ -218,7 +227,7 @@ export function createConnectedClient(
 	};
 	PriceSticker.displayName = 'PriceSticker';
 
-	const ConnectedPriceSticker = ObservableContext.connect({ p: 'price' })( PriceSticker );
+	const ConnectedPriceSticker = ObservableContext.connect({ p: 'price' })( PriceSticker as any );
 
 	const Product : React.FC<Store<Partial<TestState>> & {
 		prehooks? : Prehooks<Partial<TestState>>,
@@ -232,7 +241,9 @@ export function createConnectedClient(
 		const overridePricing = ( e => setState({
 				price: Number(( e.target as HTMLInputElement ).value )
 		}) ) as KeyboardEventHandler<HTMLInputElement>;
-
+		
+		useRenderCounter( 'Product' );
+		
 		return (
 			<div>
 				<div style={{ marginBottom: 10 }}>
@@ -263,6 +274,8 @@ export function createConnectedClient(
 
 		const updateType = ( e => setProductType(( e.target as HTMLInputElement ).value ) ) as KeyboardEventHandler<HTMLInputElement>;
 
+		useRenderCounter( 'App' );
+				
 		return (
 			<div className="App">
 				<h1>Demo</h1>
