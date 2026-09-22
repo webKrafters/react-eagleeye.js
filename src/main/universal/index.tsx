@@ -300,7 +300,7 @@ export class EagleEyeUniversal<T extends State> {
 	}
 
 	private defineStreamHook() {
-		return <const S extends SelectorMap>( selectorMap : S ) => {
+		return <const S extends SelectorMap>( selectorMap? : S ) => {
 			const [ sMapHash, updateSMapHash ] = useState(() => this._util.hashSelectorMap( selectorMap ));
 
 			const targetId = use( this._context );
