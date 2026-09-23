@@ -8,7 +8,8 @@ import {
 	JSX,
 	useState,
 	useEffect,
-	useCallback
+	useCallback,
+	useMemo
 } from 'react';
 
 import { sha512 } from 'js-sha512';
@@ -305,7 +306,7 @@ export class EagleEyeUniversal<T extends State> {
 
 			const targetId = use( this._context );
 
-			const getStoreHook = useCallback(() => {
+			const useStore = useMemo(() => {
 				const ctxHandle = this._obs.createHandleFor( targetId );
 				let streamHandle = ctxHandle.getChannelHandleAt( sMapHash );
 				if( !streamHandle.isValid ) {
@@ -319,12 +320,8 @@ export class EagleEyeUniversal<T extends State> {
 				return streamHandle.useStore as () => Store<T, S>;
 			}, [ sMapHash, selectorMap, targetId ]);
 
-			const [ useStore, updateStoreHook ] = useState( getStoreHook );
-
 			useEffect(() => updateSMapHash( this._util.hashSelectorMap( selectorMap ) ), [ selectorMap ]);
 			
-			useEffect(() => updateStoreHook( getStoreHook() ), [ sMapHash ]);
-
 			return useStore();
 		};
 	}
