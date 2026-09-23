@@ -44,7 +44,9 @@
 
 **Usage:** Please see <b><a href="https://react-eagleeye.js.org/getting-started">Getting Started</a></b>.
 
-**Demo:** [Play with the app on codesandbox](https://codesandbox.io/s/github/webKrafters/react-eagleeye-app)\
+**Demo:**\
+[1] [Play with the app on codesandbox](https://codesandbox.io/s/github/webKrafters/react-eagleeye-app)\
+[2] [Play with the app on codesandbox (Universal Rendering)](https://codesandbox.io/s/github/webKrafters/react-eagleeye-universal-app)\
 If sandbox fails to load app, please refresh dependencies on its lower left.
 
 **Install:**\
