@@ -8,7 +8,8 @@ import {
 	JSX,
 	useState,
 	useEffect,
-	useCallback
+	useCallback,
+	useMemo
 } from 'react';
 
 import { sha512 } from 'js-sha512';
@@ -81,7 +82,6 @@ export type WithChildren<P extends IProviderProps<TemplateType<P>>> = P & {
 export interface ChannelEntry {
 	channel : WeakRef<Channel>;
 	numConnections : number;
-	useStore : () => Store;
 }
 
 export interface Entry {
@@ -105,19 +105,9 @@ class ChsResource<W extends Channel> implements IResource<W> {
 	private _finalizer = new FinalizationRegistry<string>( s => this.finalize( s ) );
 	private _registry = {} as Record<string, ChannelEntry>;
 	acquire( sMapHash: string, resource: W ) {
-		const useStore = () => {
-			const [ store, setStore ] = useState(() => makeStore( resource ));
-			useEffect(() => {
-				const fn = () => setStore({ ...store, data: resource.data });
-				resource.addListener( 'data-changed', fn );
-				return () => resource.removeListener( 'data-changed', fn );
-			}, [ resource ]);
-			return store;
-		};
 		this._registry[ sMapHash ] = {
 			channel: new WeakRef( resource ),
-			numConnections: 0,
-			useStore
+			numConnections: 0
 		};
 		this._finalizer.register( resource, sMapHash, resource );
 		return this.createHandleFor( sMapHash );
@@ -129,7 +119,6 @@ class ChsResource<W extends Channel> implements IResource<W> {
 			get isValid() { return !!entry },
 			get resource () { return entry?.channel.deref?.() as W },
 			get size () { return handle.isValid ? entry.numConnections : -1 },
-			get useStore () { return entry.useStore },
 			dec: () => { 
 				if( !handle.isValid ) { return }
 				entry.numConnections--;
@@ -302,30 +291,31 @@ export class EagleEyeUniversal<T extends State> {
 	private defineStreamHook() {
 		return <const S extends SelectorMap>( selectorMap? : S ) => {
 			const [ sMapHash, updateSMapHash ] = useState(() => this._util.hashSelectorMap( selectorMap ));
-
+			useEffect(() => updateSMapHash( this._util.hashSelectorMap( selectorMap ) ), [ selectorMap ]);
+			
 			const targetId = use( this._context );
 
-			const getStoreHook = useCallback(() => {
+			const channel = useMemo(() => {
 				const ctxHandle = this._obs.createHandleFor( targetId );
 				let streamHandle = ctxHandle.getChannelHandleAt( sMapHash );
 				if( !streamHandle.isValid ) {
 					ctxHandle.addChannelAt(
-						sMapHash,
-						ctxHandle.resource.stream( selectorMap )
+						sMapHash, ctxHandle.resource.stream( selectorMap )
 					);
 					streamHandle = ctxHandle.getChannelHandleAt( sMapHash );
 				}
 				streamHandle.inc();
-				return streamHandle.useStore as () => Store<T, S>;
-			}, [ sMapHash, selectorMap, targetId ]);
+				return streamHandle.resource
+			}, [ sMapHash, targetId ]);
 
-			const [ useStore, updateStoreHook ] = useState( getStoreHook );
+			const [ store, setStore ] = useState(() => makeStore( channel ));
+			useEffect(() => {
+				const fn = () => setStore({ ...store, data: channel.data });
+				channel.addListener( 'data-changed', fn );
+				return () => channel.removeListener( 'data-changed', fn );
+			}, [ channel ]);
 
-			useEffect(() => updateSMapHash( this._util.hashSelectorMap( selectorMap ) ), [ selectorMap ]);
-			
-			useEffect(() => updateStoreHook( getStoreHook() ), [ sMapHash ]);
-
-			return useStore();
+			return store;
 		};
 	}
 }
