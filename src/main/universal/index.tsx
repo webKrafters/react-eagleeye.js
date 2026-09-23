@@ -315,7 +315,7 @@ export class EagleEyeUniversal<T extends State> {
 				return () => channel.removeListener( 'data-changed', fn );
 			}, [ channel ]);
 
-			return store;
+			return store as Store<T, S>;
 		};
 	}
 }
