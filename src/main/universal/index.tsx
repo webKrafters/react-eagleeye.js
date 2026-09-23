@@ -342,9 +342,13 @@ class Utility<T extends State> {
 		return this.context.resourceMap.getResourceAt( targetId ) as AbstractObservable<T>;
 	}
 	hashSelectorMap<S extends SelectorMap>( selectorMap? : S ) {
-		return sha512( stringify( selectorMap, ( k, v ) => {
-			typeof v === 'undefined' ? 'undefined' : v ===  null ? 'null' : v
-		} ) )
+		return sha512(
+			typeof selectorMap === 'undefined'
+			? 'undefined'
+			: selectorMap === null
+			? 'null'
+			: stringify( selectorMap, ( k, v ) => v ?? 'undefined' )
+		);
 	}
 	pointAt<const ID extends string>( target? : AbstractObservable<T>) {
 		if( !target ) {
