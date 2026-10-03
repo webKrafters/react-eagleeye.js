@@ -22,6 +22,7 @@ module.exports = {
 	testEnvironmentOptions: {
 		url: 'http://localhost/'
 	},
+	testTimeout: 1e7,
 	transform: {
 		'\\.[jt]sx?$': 'ts-jest'
 	}

@@ -31,7 +31,6 @@ import {
 	State
 } from "@webkrafters/eagleeye";
 
-
 export abstract class AbstractObservable<T extends State> {
 	private _consumer : EagleEyeContext<T>;
 	constructor(

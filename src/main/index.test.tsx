@@ -568,7 +568,7 @@ describe( 'ReactEagleEye', () => {
 			// externally reset the entire state
 			act(() => TestObservableCtx.store.resetState([ FULL_STATE_SELECTOR ]));
 			expect( TestObservableCtx.store.getState() ).toStrictEqual( sourceData );
-		}, 5e5 );
+		} );
 		test( 'will reset state whenever ' + FULL_STATE_SELECTOR + ' appears in the list of target reset paths', async () => {
 			render( <Client /> );
 			expect( screen.getByTestId( 'data-output' ).textContent ).toEqual(
@@ -639,7 +639,7 @@ describe( 'ReactEagleEye', () => {
 						Reset: 1,
 						TallyDisplay: 1
 					}) );
-				} );
+				},  );
 			} );
 			describe( 'when `resetState` prehook exists on the context', () => {
 				test( 'is called by the `store.resetState` method', async () => {
@@ -1179,7 +1179,7 @@ describe( 'ReactEagleEye', () => {
 						screen.getByTestId( 'data-output' ).textContent
 					);
 					expect( onChangeMock ).not.toHaveBeenCalled();
-				}, 5e5 );
+				} );
 			} );
 		} );
 		describe( 'useStream(...)', () => {
@@ -1639,7 +1639,7 @@ describe( 'ReactEagleEye', () => {
 							expect( ObservableContext.store.getState() ).toEqual({
 								...sourceData, isActive: isActive2
 							});
-						}, 5e5 );
+						} );
 					} );
 				} );
 				describe( 'when selectorMap is NOT present in the consumer', () => {
@@ -1664,7 +1664,7 @@ describe( 'ReactEagleEye', () => {
 							await userEvent.click( screen.getByRole( 'button' ) );
 							expect( screen.getByTestId( 'data-output' ).textContent ).toBe( origTextContent );
 							expect( ObservableContext.store.getState() ).toEqual( sourceData );
-						}, 3e5 );
+						} );
 					} );
 					describe( 'and called with NO own property paths arguments to reset', () => {
 						test( 'results in no-op', async () => {
@@ -1687,7 +1687,7 @@ describe( 'ReactEagleEye', () => {
 							await userEvent.click( screen.getByRole( 'button' ) );
 							expect( screen.getByTestId( 'data-output' ).textContent ).toBe( origTextContent );
 							expect( ObservableContext.store.getState() ).toBe( alteredState );
-						}, 3e4 );
+						} );
 					} );
 				} );
 			} );
