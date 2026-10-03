@@ -84,18 +84,18 @@ export {
 } from './main';
 
 export {
-    createContext as createEagleEyeUniversal
-} from './main/universal';
+    createContext as createEagleEyeUniverse
+} from './main/universe';
 
 export type {
-    Address as AddressUniversal,
-    BaseProviderPropsRaw as BaseProviderPropsRawUniversal,
-    EagleEyeUniversal,
-    IProviderProps as IProviderPropsUniversal,
-    Observable as ObservableUniversal,
-    ProviderProps as ProviderPropsUniversal,
-    ProviderPropsPrimitive as ProviderPropsPrimitiveUniversal,
-    ProviderPropsRaw as ProviderPropsRawUniversal,
-    RefProps as RefPropsUniversal,
-    WithChildren as WithChildrenUniversal
-} from './main/universal';
+    Address as AddressUniverse,
+    BaseProviderPropsRaw as BaseProviderPropsRawUniverse,
+    ObservableUniverse as EagleEyeUniverse,
+    IProviderProps as IProviderPropsUniverse,
+    Observable as ObservableUniverse,
+    ProviderProps as ProviderPropsUniverse,
+    ProviderPropsPrimitive as ProviderPropsPrimitiveUniverse,
+    ProviderPropsRaw as ProviderPropsRawUniverse,
+    RefProps as RefPropsUniverse,
+    WithChildren as WithChildrenUniverse
+} from './main/universe';

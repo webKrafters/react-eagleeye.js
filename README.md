@@ -48,17 +48,17 @@
 [1] [Play with the app on codesandbox](https://codesandbox.io/s/github/webKrafters/react-eagleeye-app)\
 [2] [Play with the app on codesandbox (Universal Rendering)](https://codesandbox.io/s/github/webKrafters/react-eagleeye-universal-app)\
 If sandbox fails to load app, please refresh dependencies on its lower left.\
-**OR**
+**OR**\
 Bring in and run the demo software locally through the following steps:\
 **Step 1:** Run either\
-&nbsp;&nbsp;&nbsp;&nbsp;`git clone https://github.com/webKrafters/svelte-eagleeye-app.git`\
+&nbsp;&nbsp;&nbsp;&nbsp;`git clone https://github.com/webKrafters/react-eagleeye-app.git`\
 &nbsp;&nbsp;&nbsp;&nbsp;or\
-&nbsp;&nbsp;&nbsp;&nbsp;`git clone https://github.com/webKrafters/svelte-eagleeye-app.git` (for Universal app demo)\
+&nbsp;&nbsp;&nbsp;&nbsp;`git clone https://github.com/webKrafters/react-eagleeye-universal-app.git` (Universal Rendering)\
 **Step 2:** CD into the cloned directory\
 **Step 3:** Run `npm i`\
 **Step 4:** Run `npm run dev`\
 **Step 5:** Copy and paste the displayed URL into the web browser.\
-**Step 6:** Use CTRL+F5 (Mac: CMD+F5) to ensure a fresh page load if needed.\
+**Step 6:** Use CTRL+F5 (Mac: CMD+F5) at the browser to ensure a fresh page load if needed.\
 **Step 7:** Pay with the app.
 
 **Install:**\
