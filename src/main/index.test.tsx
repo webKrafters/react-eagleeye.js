@@ -639,7 +639,7 @@ describe( 'ReactEagleEye', () => {
 						Reset: 1,
 						TallyDisplay: 1
 					}) );
-				},  );
+				} );
 			} );
 			describe( 'when `resetState` prehook exists on the context', () => {
 				test( 'is called by the `store.resetState` method', async () => {
