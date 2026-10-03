@@ -9,7 +9,6 @@ import {
 	useState,
 	useEffect,
 	useMemo,
-	useImperativeHandle,
 	useRef
 } from 'react';
 
@@ -367,11 +366,12 @@ export class ObservableUniverse<T extends State> {
 				props.observableConfig?.prehooks,
 				props.observableConfig?.storage
 			]);
-			useImperativeHandle( props.ref, () => {
-				const c = ( props.ref.current ?? {} ) as Address<ID>;
-				c.targetId = id.current;
-				return c;
-			}, [ id.current ]);
+			if( 'ref' in props && props.ref.current?.targetId !== id.current ) {
+				if( !props.ref.current ) {
+					props.ref.current = {};
+				};
+				props.ref.current.targetId = id.current;
+			}
 			const Context = me._context;
 			return (
 				<Context value={ id.current }>
