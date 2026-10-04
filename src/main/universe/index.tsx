@@ -403,13 +403,24 @@ export class ObservableUniverse<T extends State> {
 			const [ store, setStore ] = useState(() => makeStore( handle.resource ));
 			useEffect(() => {
 				const fn = () => setStore( makeStore( handle.resource ) );
-				handle.resource.addListener( 'data-changed', fn );
+				
+					//@debug
+					console.info( `INCOMING CHANNEL AT >>>>> target id : ${ targetId } >>>><<<< sMap hash: ${ sMapHash }` )
+            		
+					handle.resource.addListener( 'data-changed', fn );
 				return () => {
+
+					//@debug
+					console.info( `OUTGOING CHANNEL AT >>>>> target id : ${ targetId } >>>><<<< sMap hash: ${ sMapHash }` )
+            
 					handle.resource.removeListener( 'data-changed', fn );
 					handle.dec();
 				}
 			}, [ handle.resource ]);
 
+			//@debug
+			console.info( `RENDERING CHANNEL AT >>>>> target id : ${ targetId } >>>><<<< sMap hash: ${ sMapHash }` )
+            
 			return store as Store<T, S>;
 		};
 	}
