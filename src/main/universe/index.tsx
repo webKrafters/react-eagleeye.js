@@ -9,14 +9,15 @@ import {
 	useState,
 	useEffect,
 	useMemo,
-	useRef
+	useRef,
+	Component
 } from 'react';
 
 import isPlainObject from 'lodash.isplainobject';
 import stringify from 'safe-stable-stringify';
 import { sha512 } from 'js-sha512';
 
-import { AutoImmutable, Changes } from '@webkrafters/eagleeye';
+import { AutoImmutable, Changes, IStore } from '@webkrafters/eagleeye';
 
 import { AbstractObservable, makeStore } from '..';
 
@@ -400,27 +401,15 @@ export class ObservableUniverse<T extends State> {
 				return streamHandle;
 			}, [ sMapHash, targetId ]);
 
-			const [ store, setStore ] = useState(() => makeStore( handle.resource ));
+			const [ store, setStore ] = useState(() => _makeStore( handle.resource ));
 			useEffect(() => {
-				const fn = () => setStore( makeStore( handle.resource ) );
-				
-					//@debug
-					console.info( `INCOMING CHANNEL AT >>>>> target id : ${ targetId } >>>><<<< sMap hash: ${ sMapHash }` )
-            		
-					handle.resource.addListener( 'data-changed', fn );
+				const fn = () => setStore( _makeStore( handle.resource ) );
+				handle.resource.addListener( 'data-changed', fn );
 				return () => {
-
-					//@debug
-					console.info( `OUTGOING CHANNEL AT >>>>> target id : ${ targetId } >>>><<<< sMap hash: ${ sMapHash }` )
-            
 					handle.resource.removeListener( 'data-changed', fn );
 					handle.dec();
 				}
-			}, [ handle ]);
-
-			//@debug
-			console.info( `RENDERING CHANNEL AT >>>>> target id : ${ targetId } >>>><<<< sMap hash: ${ sMapHash }` )
-            
+			}, [ handle.resource ]);
 			return store as Store<T, S>;
 		};
 	}
@@ -466,3 +455,50 @@ export class Utility<T extends State> {
 }
 
 export function createContext<T extends State>() { return new ObservableUniverse<T>() }
+
+function _makeStore<
+	T extends State,
+	S extends SelectorMap
+>( channel : Channel<T, S> ) {
+	const s = makeStore( channel );
+	s.resetState = intercept( s.resetState );
+	s.setState = intercept( s.setState );
+	return s;
+}
+
+function intercept( m : IStore["resetState"] );
+function intercept( m : IStore["setState"] );
+function intercept( m : any ) {
+	return ( ...args : Parameters<typeof m> ) => {
+		try { m( ...args ) } catch( e ) {
+			/* istanbul ignore next */
+			if( !e.message.startsWith( "Cannot read properties of null (reading 'getState')" ) ) {
+				throw e;
+			}
+			// allow system gc to clean up scheduled freed streams
+		}
+	}
+}
+
+{/* class ErrorBoundary extends Component {
+	state = { hasError: false, error: null };
+	static getDerivedStateFromError(error) {
+		return { hasError: true, error };
+	}
+	private pushError() {
+		if( this.state.hasError ) {
+			console?.warn?.
+		}
+	}
+	componentDidMount(): void {
+		
+	}
+	render() {
+		if( this.state.hasError ) {
+			return <h2>Caught by Boundary: {
+				this.state.error.message
+			}</h2>;
+		}
+    	return this.props.children;
+  	}
+} */}
