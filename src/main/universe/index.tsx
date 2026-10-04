@@ -402,7 +402,7 @@ export class ObservableUniverse<T extends State> {
 
 			const [ store, setStore ] = useState(() => makeStore( handle.resource ));
 			useEffect(() => {
-				const fn = () => setStore({ ...store, data: handle.resource.data });
+				const fn = () => setStore( makeStore( handle.resource ) );
 				handle.resource.addListener( 'data-changed', fn );
 				return () => {
 					handle.resource.removeListener( 'data-changed', fn );

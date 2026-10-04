@@ -113,9 +113,7 @@ export class ObservableContext<T extends State> extends AbstractObservable<T> {
 			useEffect(() => {
 				channel.addListener(
 					'data-changed',
-					() => setStore({
-						...store, data: channel.data
-					} as unknown as Store<T, S> )
+					() => setStore( makeStore( channel ) )
 				);
 				return () => channel.endStream();
 			}, [ channel ]);
