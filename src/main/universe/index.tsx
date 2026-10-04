@@ -416,7 +416,7 @@ export class ObservableUniverse<T extends State> {
 					handle.resource.removeListener( 'data-changed', fn );
 					handle.dec();
 				}
-			}, [ handle.resource ]);
+			}, [ handle ]);
 
 			//@debug
 			console.info( `RENDERING CHANNEL AT >>>>> target id : ${ targetId } >>>><<<< sMap hash: ${ sMapHash }` )
