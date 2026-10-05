@@ -410,7 +410,15 @@ export class ObservableUniverse<T extends State> {
 				} else {
 					mounted.current = true;
 				}
-				const fn = () => setStore({ ...store, data: channel.data });
+				const fn = () => {
+					try { setStore({ ...store, data: channel.data }) } catch( e ) {
+						/* allow system gc to clean up scheduled freed streams */
+						/* istanbul ignore next */
+						if( !( e as Error ).message.includes(
+							"Cannot read properties of null (reading 'getState')"
+						) ) { throw e }
+					}
+				}
 				channel.addListener( 'data-changed', fn );
 				return () => {
 					channel.removeListener( 'data-changed', fn );
