@@ -9,8 +9,7 @@ import {
 	useState,
 	useEffect,
 	useMemo,
-	useRef,
-	Component
+	useRef
 } from 'react';
 
 import isPlainObject from 'lodash.isplainobject';
@@ -147,7 +146,7 @@ class StreamerHandle<W extends Channel> implements Handle<W> {
 		return this._entry?.channel?.deref?.() as W
 	}
 	// istanbul ignore next
-	get size() { return this.isValid ? this._entry.numConnections : -1 }
+	get size() { return this.isValid ? this._entry.numConnections : 0 }
 	// istanbul ignore next
 	dec() { 
 		if( !this.isValid ) { return }
@@ -410,15 +409,7 @@ export class ObservableUniverse<T extends State> {
 				} else {
 					mounted.current = true;
 				}
-				const fn = () => {
-					try { setStore({ ...store, data: channel.data }) } catch( e ) {
-						/* allow system gc to clean up scheduled freed streams */
-						/* istanbul ignore next */
-						if( !( e as Error ).message.includes(
-							"Cannot read properties of null (reading 'getState')"
-						) ) { throw e }
-					}
-				}
+				const fn = () => setStore({ ...store, data: channel.data });
 				channel.addListener( 'data-changed', fn );
 				return () => {
 					channel.removeListener( 'data-changed', fn );
@@ -428,78 +419,6 @@ export class ObservableUniverse<T extends State> {
 			return store as Store<T, S>;
 		};
 	}
-
-	// private defineStreamHook() {
-	// 	return <const S extends SelectorMap>( selectorMap? : S ) => {
-	// 		const [ sMapHash, updateSMapHash ] = useState(() => this._util.hashSelectorMap( selectorMap ));
-	// 		useEffect(() => updateSMapHash( this._util.hashSelectorMap( selectorMap ) ), [ selectorMap ]);
-	// 		const targetId = use( this._context );
-	// 		const currChannel = useRef( null as unknown as Channel<T, S> );
-	// 		const currHandle = useRef( null as unknown as StreamerHandle<Channel<T, S>> );
-	// 		const currUpdater = useRef( null as unknown as () => void );
-	// 		const handle = useMemo(() => {
-	// 			const ctxHandle = this._obs.createHandleFor( targetId );
-	// 			let streamHandle = ctxHandle.getChannelHandleAt( sMapHash );
-	// 			if( !streamHandle.isValid ) {
-	// 				ctxHandle.addChannelAt(
-	// 					sMapHash, ctxHandle.resource.stream( selectorMap )
-	// 				);
-	// 				streamHandle = ctxHandle.getChannelHandleAt( sMapHash );
-	// 			}
-	// 			streamHandle.inc();
-	// 			return streamHandle as StreamerHandle<Channel<T, S>>;
-	// 		}, [ sMapHash, targetId ]);
-
-	// 		let [ store, setStore ] = useState<Store<T,S>>();
-
-	// 		if( handle.resource !== currChannel.current ) {
-	// 			if( !!currChannel.current ) {
-	// 				currChannel.current.removeListener(
-	// 					'data-changed', currUpdater.current
-	// 				);
-	// 				currHandle.current.dec();
-	// 			}
-	// 			store = makeStore( handle.resource );
-	// 			currChannel.current = handle.resource;
-	// 			currHandle.current = handle;
-	// 			currUpdater.current = () => {
-	// 				// try {
-	// 					setStore({ ...store, data: currChannel.current.data });
-	// 				// } catch( e ) {
-	// 				// 	/* istanbul ignore next */
-	// 				// 	if( !( e as Error ).message.includes(
-	// 				// 		"Cannot read properties of null (reading 'getState')"
-	// 				// 	) ) { throw e }
-	// 				// 	// allow system gc to clean up scheduled freed streams
-	// 				// }
-	// 			}
-	// 		}
-
-	// 		// useEffect(() => {
-	// 		// 	setStore( makeStore( handle.resource ) );
-	// 		// 	return handle.dec.bind( handle );
-	// 		// }, [ handle.resource ] )
-	// 		// useEffect(() => {
-	// 		// 	const fn = () => {
-	// 		// 		try {
-	// 		// 			setStore( makeStore( handle.resource ) );
-	// 		// 		} catch( e ) {
-	// 		// 			/* istanbul ignore next */
-	// 		// 			if( !( e as Error ).message.includes(
-	// 		// 				"Cannot read properties of null (reading 'getState')"
-	// 		// 			) ) { throw e }
-	// 		// 			// allow system gc to clean up scheduled freed streams
-	// 		// 		}
-	// 		// 	}
-	// 		// 	handle.resource.addListener( 'data-changed', fn );
-	// 		// 	return () => {
-	// 		// 		handle.resource.removeListener( 'data-changed', fn );
-	// 		// 	}
-	// 		// }, [ handle.resource ]);
-
-	// 		return store as Store<T, S>;
-	// 	};
-	// }
 }
 
 export class Utility<T extends State> {
