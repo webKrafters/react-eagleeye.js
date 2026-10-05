@@ -152,7 +152,6 @@ class StreamerHandle<W extends Channel> implements Handle<W> {
 		if( !this.isValid ) { return }
 		this._entry.numConnections--;
 		if( this.size ) { return }
-		this.resource.endStream();
 		this._chs.finalizer.unregister( this.resource );
 		const { channel } = this._entry;
 		this._entry.channel = null;
