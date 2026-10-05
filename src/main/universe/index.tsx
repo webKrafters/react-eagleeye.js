@@ -94,6 +94,7 @@ interface Entry {
 
 interface Handle<W extends WeakKey> {
 	readonly resource : W;
+	release( force : boolean ) : void;
 }
 
 class ObserverHandle<W extends AbstractObservable<ObservableTemplate<W>>> implements Handle<W> {
@@ -148,17 +149,15 @@ class StreamerHandle<W extends Channel> implements Handle<W> {
 	// istanbul ignore next
 	get size() { return this.isValid ? this._entry.numConnections : -1 }
 	// istanbul ignore next
-	dec() { 
-		if( !this.isValid ) { return }
-		this._entry.numConnections--;
-		if( this.size ) { return }
+	dec() {  this.size > 0 && this._entry.numConnections-- }
+	inc() { this.isValid && this._entry.numConnections++ }
+	release( force = false ) {
+		if( !force && this.size > 0 ) { return }
+		this.resource.endStream();
 		this._chs.finalizer.unregister( this.resource );
-		const { channel } = this._entry;
 		this._entry.channel = null;
 		this._chs.finalize( this._sMapHash );
-		setTimeout( () => channel.deref()?.endStream(), 0 );
 	}
-	inc() { this.isValid && this._entry.numConnections++ }
 }
 
 interface IResource<W extends WeakKey>{
@@ -397,10 +396,10 @@ export class ObservableUniverse<T extends State> {
 					);
 					streamHandle = ctxHandle.getChannelHandleAt( sMapHash );
 				}
-				streamHandle.inc();
 				return streamHandle;
 			}, [ sMapHash, targetId ]);
 			const mounted = useRef( false );
+			let [ currentUri ] = useState( getCurrentUri );
 			const [ store, setStore ] = useState(() => makeStore( handle.resource ));
 			useEffect(() => {
 				const channel = handle.resource;
@@ -412,15 +411,21 @@ export class ObservableUniverse<T extends State> {
 				}
 				const fn = () => setStore({ ...store, data: channel.data });
 				channel.addListener( 'data-changed', fn );
+				handle.inc();
 				return () => {
 					channel.removeListener( 'data-changed', fn );
 					handle.dec();
+					const uri = getCurrentUri();
+					currentUri === uri && handle.release();
+					currentUri = uri;
 				}
 			}, [ handle.resource ]);
 			return store as Store<T, S>;
 		};
 	}
 }
+
+function getCurrentUri() { return globalThis.location?.pathname }
 
 export class Utility<T extends State> {
 	private _wContext : WeakRef<ObservableUniverse<T>>;
