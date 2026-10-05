@@ -146,7 +146,7 @@ class StreamerHandle<W extends Channel> implements Handle<W> {
 		return this._entry?.channel?.deref?.() as W
 	}
 	// istanbul ignore next
-	get size() { return this.isValid ? this._entry.numConnections : 0 }
+	get size() { return this.isValid ? this._entry.numConnections : -1 }
 	// istanbul ignore next
 	dec() { 
 		if( !this.isValid ) { return }
@@ -154,8 +154,10 @@ class StreamerHandle<W extends Channel> implements Handle<W> {
 		if( this.size ) { return }
 		this.resource.endStream();
 		this._chs.finalizer.unregister( this.resource );
+		const { channel } = this._entry;
 		this._entry.channel = null;
 		this._chs.finalize( this._sMapHash );
+		setTimeout( () => channel.deref()?.endStream(), 0 );
 	}
 	inc() { this.isValid && this._entry.numConnections++ }
 }
@@ -461,27 +463,3 @@ export class Utility<T extends State> {
 }
 
 export function createContext<T extends State>() { return new ObservableUniverse<T>() }
-
-{/* function _makeStore<
-	T extends State,
-	S extends SelectorMap
->( channel : Channel<T, S> ) {
-	const s = makeStore( channel );
-	s.resetState = intercept( s.resetState );
-	s.setState = intercept( s.setState );
-	return s;
-} */}
-
-// function intercept( m : IStore["resetState"] );
-// function intercept( m : IStore["setState"] );
-// function intercept( m : any ) {
-// 	return ( ...args : Parameters<typeof m> ) => {
-// 		try { m( ...args ) } catch( e ) {
-// 			/* istanbul ignore next */
-// 			if( !e.message.startsWith( "Cannot read properties of null (reading 'getState')" ) ) {
-// 				throw e;
-// 			}
-// 			// allow system gc to clean up scheduled freed streams
-// 		}
-// 	}
-//  }
