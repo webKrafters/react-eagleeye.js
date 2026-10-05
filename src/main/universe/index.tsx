@@ -239,14 +239,14 @@ export class ObservableUniverse<T extends State> {
 
 	private _context : Context<string>;
 	private _pCache = null as unknown as ReturnType<ObservableUniverse<T>["defineProvider"]>;
-	private _obs = null as unknown as ObsResource<AbstractObservable<any>>;
+	private _obs = null as unknown as ObsResource<AbstractObservable<T>>;
 	private _sCache = null as unknown as ReturnType<ObservableUniverse<T>["defineStreamHook"]>;
 	private _util = null as Utility<T>;
 	
 	constructor() {
 		this._context = _createContext<string>( '0:0' );
 		this._pCache = this.defineProvider();
-		this._obs = new ObsResource<AbstractObservable<any>>();
+		this._obs = new ObsResource<AbstractObservable<T>>();
 		this._sCache = this.defineStreamHook();
 		this._util = new Utility( this );
 	}
@@ -400,19 +400,98 @@ export class ObservableUniverse<T extends State> {
 				streamHandle.inc();
 				return streamHandle;
 			}, [ sMapHash, targetId ]);
-
-			const [ store, setStore ] = useState(() => _makeStore( handle.resource ));
+			const mounted = useRef( false );
+			const [ store, setStore ] = useState(() => makeStore( handle.resource ));
 			useEffect(() => {
-				const fn = () => setStore( _makeStore( handle.resource ) );
-				handle.resource.addListener( 'data-changed', fn );
+				const channel = handle.resource;
+				// istanbul ignore next
+				if( mounted.current ) {
+					setStore( makeStore( channel ) );
+				} else {
+					mounted.current = true;
+				}
+				const fn = () => setStore({ ...store, data: channel.data });
+				channel.addListener( 'data-changed', fn );
 				return () => {
-					handle.resource.removeListener( 'data-changed', fn );
+					channel.removeListener( 'data-changed', fn );
 					handle.dec();
 				}
 			}, [ handle.resource ]);
 			return store as Store<T, S>;
 		};
 	}
+
+	// private defineStreamHook() {
+	// 	return <const S extends SelectorMap>( selectorMap? : S ) => {
+	// 		const [ sMapHash, updateSMapHash ] = useState(() => this._util.hashSelectorMap( selectorMap ));
+	// 		useEffect(() => updateSMapHash( this._util.hashSelectorMap( selectorMap ) ), [ selectorMap ]);
+	// 		const targetId = use( this._context );
+	// 		const currChannel = useRef( null as unknown as Channel<T, S> );
+	// 		const currHandle = useRef( null as unknown as StreamerHandle<Channel<T, S>> );
+	// 		const currUpdater = useRef( null as unknown as () => void );
+	// 		const handle = useMemo(() => {
+	// 			const ctxHandle = this._obs.createHandleFor( targetId );
+	// 			let streamHandle = ctxHandle.getChannelHandleAt( sMapHash );
+	// 			if( !streamHandle.isValid ) {
+	// 				ctxHandle.addChannelAt(
+	// 					sMapHash, ctxHandle.resource.stream( selectorMap )
+	// 				);
+	// 				streamHandle = ctxHandle.getChannelHandleAt( sMapHash );
+	// 			}
+	// 			streamHandle.inc();
+	// 			return streamHandle as StreamerHandle<Channel<T, S>>;
+	// 		}, [ sMapHash, targetId ]);
+
+	// 		let [ store, setStore ] = useState<Store<T,S>>();
+
+	// 		if( handle.resource !== currChannel.current ) {
+	// 			if( !!currChannel.current ) {
+	// 				currChannel.current.removeListener(
+	// 					'data-changed', currUpdater.current
+	// 				);
+	// 				currHandle.current.dec();
+	// 			}
+	// 			store = makeStore( handle.resource );
+	// 			currChannel.current = handle.resource;
+	// 			currHandle.current = handle;
+	// 			currUpdater.current = () => {
+	// 				// try {
+	// 					setStore({ ...store, data: currChannel.current.data });
+	// 				// } catch( e ) {
+	// 				// 	/* istanbul ignore next */
+	// 				// 	if( !( e as Error ).message.includes(
+	// 				// 		"Cannot read properties of null (reading 'getState')"
+	// 				// 	) ) { throw e }
+	// 				// 	// allow system gc to clean up scheduled freed streams
+	// 				// }
+	// 			}
+	// 		}
+
+	// 		// useEffect(() => {
+	// 		// 	setStore( makeStore( handle.resource ) );
+	// 		// 	return handle.dec.bind( handle );
+	// 		// }, [ handle.resource ] )
+	// 		// useEffect(() => {
+	// 		// 	const fn = () => {
+	// 		// 		try {
+	// 		// 			setStore( makeStore( handle.resource ) );
+	// 		// 		} catch( e ) {
+	// 		// 			/* istanbul ignore next */
+	// 		// 			if( !( e as Error ).message.includes(
+	// 		// 				"Cannot read properties of null (reading 'getState')"
+	// 		// 			) ) { throw e }
+	// 		// 			// allow system gc to clean up scheduled freed streams
+	// 		// 		}
+	// 		// 	}
+	// 		// 	handle.resource.addListener( 'data-changed', fn );
+	// 		// 	return () => {
+	// 		// 		handle.resource.removeListener( 'data-changed', fn );
+	// 		// 	}
+	// 		// }, [ handle.resource ]);
+
+	// 		return store as Store<T, S>;
+	// 	};
+	// }
 }
 
 export class Utility<T extends State> {
@@ -456,7 +535,7 @@ export class Utility<T extends State> {
 
 export function createContext<T extends State>() { return new ObservableUniverse<T>() }
 
-function _makeStore<
+{/* function _makeStore<
 	T extends State,
 	S extends SelectorMap
 >( channel : Channel<T, S> ) {
@@ -464,41 +543,18 @@ function _makeStore<
 	s.resetState = intercept( s.resetState );
 	s.setState = intercept( s.setState );
 	return s;
-}
-
-function intercept( m : IStore["resetState"] );
-function intercept( m : IStore["setState"] );
-function intercept( m : any ) {
-	return ( ...args : Parameters<typeof m> ) => {
-		try { m( ...args ) } catch( e ) {
-			/* istanbul ignore next */
-			if( !e.message.startsWith( "Cannot read properties of null (reading 'getState')" ) ) {
-				throw e;
-			}
-			// allow system gc to clean up scheduled freed streams
-		}
-	}
-}
-
-{/* class ErrorBoundary extends Component {
-	state = { hasError: false, error: null };
-	static getDerivedStateFromError(error) {
-		return { hasError: true, error };
-	}
-	private pushError() {
-		if( this.state.hasError ) {
-			console?.warn?.
-		}
-	}
-	componentDidMount(): void {
-		
-	}
-	render() {
-		if( this.state.hasError ) {
-			return <h2>Caught by Boundary: {
-				this.state.error.message
-			}</h2>;
-		}
-    	return this.props.children;
-  	}
 } */}
+
+// function intercept( m : IStore["resetState"] );
+// function intercept( m : IStore["setState"] );
+// function intercept( m : any ) {
+// 	return ( ...args : Parameters<typeof m> ) => {
+// 		try { m( ...args ) } catch( e ) {
+// 			/* istanbul ignore next */
+// 			if( !e.message.startsWith( "Cannot read properties of null (reading 'getState')" ) ) {
+// 				throw e;
+// 			}
+// 			// allow system gc to clean up scheduled freed streams
+// 		}
+// 	}
+//  }
