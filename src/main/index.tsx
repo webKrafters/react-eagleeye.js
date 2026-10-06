@@ -107,23 +107,16 @@ export class ObservableContext<T extends State> extends AbstractObservable<T> {
 		return <const S extends SelectorMap>( selectorMap? : S ) => {
 			const [ channel ] = useState(() => stream( selectorMap ));
 			const [ store, setStore ] = useState(() => makeStore( channel ));
-			const mounted = useRef( false );
 			useEffect(() => {
 				channel.selectorMap = selectorMap;
 			}, [ selectorMap ]);
 			useEffect(() => {
-				// istanbul ignore next
-				if( mounted.current ) {
-					setStore( makeStore( channel ) );
-				} else {
-					mounted.current = true;
-				}
 				channel.addListener(
 					'data-changed',
 					() => setStore({ ...store, data: channel.data })
 				);
 				return () => channel.endStream();
-			}, [ channel ]);
+			}, []);
 			return store;
 		};
 	}

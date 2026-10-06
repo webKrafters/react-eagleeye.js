@@ -1,6 +1,7 @@
 import {
 	act,
 	render,
+	renderHook,
 	RenderResult
 } from '@testing-library/react';
 import {
@@ -21,6 +22,7 @@ import Immutable from '@webkrafters/auto-immutable';
 import {
 	Dispatch,
 	FC,
+	ReactNode,
 	RefObject,
 	SetStateAction,
 	useMemo,
@@ -213,6 +215,24 @@ describe( 'ReactObservableUniverse', () => {
 			});
 			expect( clientData.eyes ).toBe( 'blue' );
 			expect( clientData.fruit ).toBe( 'banana' );
+		} );
+		test( 'selectorMap update not supported in SSR Mode', () => {
+			const Context = createContext<SourceData>();
+			const { useStream } = Context;
+			const wrapper = ( props : { children : ReactNode }) => (
+				<Context.Provider observableConfig={{ value: createSourceData() }}>
+					{ props.children }
+				</Context.Provider>
+			);
+			const { rerender } = renderHook(
+				props => { useStream( props.sMap ) }, {
+					initialProps: { sMap: { c: 'company' } },
+					wrapper
+				}
+			);
+			expect(() => rerender({ sMap: { c: 'company' }})).toThrow(
+				'Selector map change not supported in SSR Mode.'
+			);
 		} );
 	} );
 	describe( 'Provider', () => {

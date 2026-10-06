@@ -384,48 +384,38 @@ export class ObservableUniverse<T extends State> {
 
 	private defineStreamHook() {
 		return <const S extends SelectorMap>( selectorMap? : S ) => {
-			const [ sMapHash, updateSMapHash ] = useState(() => this._util.hashSelectorMap( selectorMap ));
-			useEffect(() => updateSMapHash( this._util.hashSelectorMap( selectorMap ) ), [ selectorMap ]);
-			const targetId = use( this._context );
-			const handle = useMemo(() => {
-				const ctxHandle = this._obs.createHandleFor( targetId );
-				let streamHandle = ctxHandle.getChannelHandleAt( sMapHash );
-				if( !streamHandle.isValid ) {
-					ctxHandle.addChannelAt(
-						sMapHash, ctxHandle.resource.stream( selectorMap )
-					);
-					streamHandle = ctxHandle.getChannelHandleAt( sMapHash );
-				}
-				return streamHandle;
-			}, [ sMapHash, targetId ]);
 			const mounted = useRef( false );
+			const targetId = use( this._context );
+			const [ handle ] = useState(() => getStreamHandle(
+				this._obs.createHandleFor( targetId ),
+				selectorMap,
+				this._util.hashSelectorMap( selectorMap )
+			));
 			let [ currentUri ] = useState( getCurrentUri );
-			const [ store, setStore ] = useState(() => makeStore( handle.resource ));
+			const [ store, setStore ] = useState<Store<T, S>>(() => makeStore( handle.resource ));
 			useEffect(() => {
-				const channel = handle.resource;
+				if( !mounted.current ) { return }
+				throw new Error( 'Selector map change not supported in SSR Mode.' );
+			}, [ selectorMap ]);
+			useEffect(() => {
 				// istanbul ignore next
-				if( mounted.current ) {
-					setStore( makeStore( channel ) );
-				} else {
-					mounted.current = true;
-				}
+				if( mounted.current ) { return }
+				mounted.current = true;
+				const channel = handle.resource;
 				const fn = () => setStore({ ...store, data: channel.data });
 				channel.addListener( 'data-changed', fn );
 				handle.inc();
 				return () => {
 					channel.removeListener( 'data-changed', fn );
 					handle.dec();
-					const uri = getCurrentUri();
-					currentUri === uri && handle.release();
-					currentUri = uri;
-				}
-			}, [ handle.resource ]);
-			return store as Store<T, S>;
+					currentUri === getCurrentUri() &&
+					handle.release();
+				};
+			}, []);
+			return store;
 		};
 	}
 }
-
-function getCurrentUri() { return globalThis.location?.pathname }
 
 export class Utility<T extends State> {
 	private _wContext : WeakRef<ObservableUniverse<T>>;
@@ -467,3 +457,21 @@ export class Utility<T extends State> {
 }
 
 export function createContext<T extends State>() { return new ObservableUniverse<T>() }
+
+function getCurrentUri() { return globalThis.location?.pathname }
+
+function getStreamHandle<T extends State, S extends SelectorMap>(
+	contextHandle : ObserverHandle<AbstractObservable<T>>,
+	selectorMap : S,
+	sMapHash : string
+) {
+	let streamHandle = contextHandle.getChannelHandleAt( sMapHash );
+	if( !streamHandle.isValid ) {
+		contextHandle.addChannelAt(
+			sMapHash,
+			contextHandle.resource.stream( selectorMap )
+		);
+		streamHandle = contextHandle.getChannelHandleAt( sMapHash );
+	}
+	return streamHandle as StreamerHandle<Channel<T, S>>;
+}
