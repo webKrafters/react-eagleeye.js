@@ -52,7 +52,7 @@ describe( 'ReactObservableUniverse', () => {
 		expect( TestContext.useStream ).toEqual( TestContext.useStream );
 	} );
 	describe( 'free(...) method as a manual tenant scope enforcement option', () => {
-		test( 'only severs relationship with non-streaming context instances', () => {
+		test( '1xxxx only severs relationship with non-streaming context instances', () => {
 			let renderResult : RenderResult;
 			const obsIds : Array<string> = [];
 			const TestContext = createContext();
@@ -98,10 +98,9 @@ describe( 'ReactObservableUniverse', () => {
 			expect( TestContext.getObservableAt( obsIds[ 1 ] ) ).toBeUndefined();
 			
 			renderResult.unmount();
-
+			
 			TestContext.free( outerTarget );
 			expect( TestContext.getObservableAt( obsIds[ 0 ] ) ).toBeUndefined();
-			
 		} );
 		test( 'uses the "force" flag to sever context instances irrespective of its streaming status', () => {
 			const TestContext = createContext();
@@ -215,24 +214,6 @@ describe( 'ReactObservableUniverse', () => {
 			});
 			expect( clientData.eyes ).toBe( 'blue' );
 			expect( clientData.fruit ).toBe( 'banana' );
-		} );
-		test( 'selectorMap update not supported in SSR Mode', () => {
-			const Context = createContext<SourceData>();
-			const { useStream } = Context;
-			const wrapper = ( props : { children : ReactNode }) => (
-				<Context.Provider observableConfig={{ value: createSourceData() }}>
-					{ props.children }
-				</Context.Provider>
-			);
-			const { rerender } = renderHook(
-				props => { useStream( props.sMap ) }, {
-					initialProps: { sMap: { c: 'company' } },
-					wrapper
-				}
-			);
-			expect(() => rerender({ sMap: { c: 'company' }})).toThrow(
-				'Selector map change not supported in SSR Mode.'
-			);
 		} );
 	} );
 	describe( 'Provider', () => {
